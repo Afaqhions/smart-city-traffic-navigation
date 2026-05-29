@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents } from 'react-leaflet';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents, CircleMarker } from 'react-leaflet';
 import L from 'leaflet';
-import { Navigation, ArrowRight, Activity, MapPin, Trash2, Route, GitBranch } from 'lucide-react';
+import { Navigation, ArrowRight, Activity, Trash2, Route, GitBranch, AlertTriangle, Search, Menu, X, Loader2 } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 
+// Fix Leaflet icon issue
 const fixLeafletIcon = () => {
   delete L.Icon.Default.prototype._getIconUrl;
   L.Icon.Default.mergeOptions({
@@ -12,359 +13,253 @@ const fixLeafletIcon = () => {
     shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
   });
 };
-
 fixLeafletIcon();
 
-const lahoreCenter = [31.5497, 74.3436];
-
-const lahoreLocations = {
-  "UET Lahore": { lat: 31.5785, lng: 74.4022 },
-  "University of Punjab": { lat: 31.5680, lng: 74.4650 },
-  "Lahore Railway Station": { lat: 31.5712, lng: 74.3042 },
-  "Lahore Airport (Allama Iqbal)": { lat: 31.5214, lng: 74.4031 },
-  "Mall Road": { lat: 31.5636, lng: 74.3142 },
-  "Anarkali Bazaar": { lat: 31.5654, lng: 74.3331 },
-  "Minhaj-ul-Quran International": { lat: 31.5385, lng: 74.4032 },
-  "Shalimar Gardens": { lat: 31.5882, lng: 74.3642 },
-  "Badshahi Mosque": { lat: 31.5883, lng: 74.3104 },
-  "Lahore Zoo": { lat: 31.5402, lng: 74.3331 },
-  "Canal Bank": { lat: 31.5736, lng: 74.3592 },
-  "Ferozepur Road": { lat: 31.5682, lng: 74.3782 },
-  "Gulberg III": { lat: 31.5454, lng: 74.3952 },
-  "Lahore Cantt": { lat: 31.5876, lng: 74.3492 },
-  "Model Town": { lat: 31.5185, lng: 74.4122 },
-  "Garden Town": { lat: 31.5298, lng: 74.3832 },
-  "Shalimar Block": { lat: 31.5500, lng: 74.4400 },
-  "Ichra": { lat: 31.5570, lng: 74.3080 },
-  "Nishtar Town": { lat: 31.5350, lng: 74.3200 },
-  "Township": { lat: 31.5100, lng: 74.3500 },
-  "Wapda Town": { lat: 31.5200, lng: 74.3900 },
-  "Johar Town": { lat: 31.4950, lng: 74.3700 },
-  "Mughalpura": { lat: 31.5900, lng: 74.3700 },
-  "Mozang": { lat: 31.5800, lng: 74.3250 },
-  "Baghbanpura": { lat: 31.5950, lng: 74.3800 },
-  "Wahdat Colony": { lat: 31.5850, lng: 74.3850 },
-  "Samanabad": { lat: 31.5550, lng: 74.3400 },
-  "Yousafabad": { lat: 31.5400, lng: 74.3500 },
-  "Kot Lakhpat": { lat: 31.5300, lng: 74.4200 },
-  "Baroon": { lat: 31.5600, lng: 74.3950 }
-};
-
-const lahoreGraph = {
-  "UET Lahore": [
-    { to: "Ferozepur Road", weight: 2.5 },
-    { to: "Shalimar Gardens", weight: 3.2 },
-    { to: "Gulberg III", weight: 4.1 },
-    { to: "Minhaj-ul-Quran International", weight: 4.8 },
-    { to: "Baroon", weight: 3.0 }
-  ],
-  "University of Punjab": [
-    { to: "UET Lahore", weight: 3.5 },
-    { to: "Shalimar Block", weight: 2.0 },
-    { to: "Kot Lakhpat", weight: 2.8 },
-    { to: "Wapda Town", weight: 3.2 }
-  ],
-  "Lahore Railway Station": [
-    { to: "Anarkali Bazaar", weight: 1.8 },
-    { to: "Badshahi Mosque", weight: 2.5 },
-    { to: "Canal Bank", weight: 3.2 },
-    { to: "Mall Road", weight: 2.4 },
-    { to: "Ichra", weight: 2.0 },
-    { to: "Mozang", weight: 2.2 }
-  ],
-  "Lahore Airport (Allama Iqbal)": [
-    { to: "Lahore Cantt", weight: 4.0 },
-    { to: "Canal Bank", weight: 5.5 },
-    { to: "Badshahi Mosque", weight: 7.2 },
-    { to: "Wapda Town", weight: 4.8 }
-  ],
-  "Mall Road": [
-    { to: "Lahore Railway Station", weight: 2.4 },
-    { to: "Anarkali Bazaar", weight: 1.5 },
-    { to: "Canal Bank", weight: 2.8 },
-    { to: "Ferozepur Road", weight: 1.8 },
-    { to: "Lahore Cantt", weight: 3.5 },
-    { to: "Ichra", weight: 2.0 },
-    { to: "Samanabad", weight: 2.2 }
-  ],
-  "Anarkali Bazaar": [
-    { to: "Lahore Railway Station", weight: 1.8 },
-    { to: "Mall Road", weight: 1.5 },
-    { to: "Badshahi Mosque", weight: 1.8 },
-    { to: "Gulberg III", weight: 2.5 },
-    { to: "Samanabad", weight: 1.5 },
-    { to: "Lahore Zoo", weight: 1.2 }
-  ],
-  "Minhaj-ul-Quran International": [
-    { to: "UET Lahore", weight: 4.8 },
-    { to: "Gulberg III", weight: 1.8 },
-    { to: "Lahore Zoo", weight: 3.5 },
-    { to: "Model Town", weight: 4.2 },
-    { to: "Wapda Town", weight: 2.5 },
-    { to: "Kot Lakhpat", weight: 3.0 }
-  ],
-  "Shalimar Gardens": [
-    { to: "UET Lahore", weight: 3.2 },
-    { to: "Lahore Cantt", weight: 4.5 },
-    { to: "Canal Bank", weight: 2.5 },
-    { to: "Baghbanpura", weight: 2.0 },
-    { to: "Mozang", weight: 3.8 },
-    { to: "Mughalpura", weight: 2.8 }
-  ],
-  "Badshahi Mosque": [
-    { to: "Lahore Railway Station", weight: 2.5 },
-    { to: "Anarkali Bazaar", weight: 1.8 },
-    { to: "Lahore Airport (Allama Iqbal)", weight: 7.2 },
-    { to: "Lahore Zoo", weight: 4.0 },
-    { to: "Mozang", weight: 2.0 }
-  ],
-  "Lahore Zoo": [
-    { to: "Minhaj-ul-Quran International", weight: 3.5 },
-    { to: "Badshahi Mosque", weight: 4.0 },
-    { to: "Gulberg III", weight: 2.2 },
-    { to: "Garden Town", weight: 2.5 },
-    { to: "Yousafabad", weight: 1.5 }
-  ],
-  "Canal Bank": [
-    { to: "Lahore Railway Station", weight: 3.2 },
-    { to: "Mall Road", weight: 2.8 },
-    { to: "Lahore Airport (Allama Iqbal)", weight: 5.5 },
-    { to: "Shalimar Gardens", weight: 2.5 },
-    { to: "Lahore Cantt", weight: 3.2 },
-    { to: "Gulberg III", weight: 3.0 }
-  ],
-  "Ferozepur Road": [
-    { to: "UET Lahore", weight: 2.5 },
-    { to: "Mall Road", weight: 1.8 },
-    { to: "Lahore Cantt", weight: 2.8 },
-    { to: "Gulberg III", weight: 1.5 },
-    { to: "Baroon", weight: 1.2 },
-    { to: "Wahdat Colony", weight: 2.0 }
-  ],
-  "Gulberg III": [
-    { to: "UET Lahore", weight: 4.1 },
-    { to: "Ferozepur Road", weight: 1.5 },
-    { to: "Anarkali Bazaar", weight: 2.5 },
-    { to: "Minhaj-ul-Quran International", weight: 1.8 },
-    { to: "Lahore Zoo", weight: 2.2 },
-    { to: "Garden Town", weight: 1.8 },
-    { to: "Canal Bank", weight: 3.0 }
-  ],
-  "Lahore Cantt": [
-    { to: "Lahore Airport (Allama Iqbal)", weight: 4.0 },
-    { to: "Mall Road", weight: 3.5 },
-    { to: "Shalimar Gardens", weight: 4.5 },
-    { to: "Canal Bank", weight: 3.2 },
-    { to: "Ferozepur Road", weight: 2.8 },
-    { to: "Mughalpura", weight: 3.5 },
-    { to: "Mozang", weight: 2.8 }
-  ],
-  "Model Town": [
-    { to: "Minhaj-ul-Quran International", weight: 4.2 },
-    { to: "Garden Town", weight: 3.0 },
-    { to: "Wapda Town", weight: 2.2 },
-    { to: "Kot Lakhpat", weight: 2.5 },
-    { to: "Johar Town", weight: 3.5 }
-  ],
-  "Garden Town": [
-    { to: "Minhaj-ul-Quran International", weight: 3.0 },
-    { to: "Lahore Zoo", weight: 2.5 },
-    { to: "Gulberg III", weight: 1.8 },
-    { to: "Model Town", weight: 3.0 },
-    { to: "Yousafabad", weight: 1.5 },
-    { to: "Township", weight: 2.2 }
-  ],
-  "Shalimar Block": [
-    { to: "University of Punjab", weight: 2.0 },
-    { to: "Kot Lakhpat", weight: 1.5 },
-    { to: "Wapda Town", weight: 2.2 },
-    { to: "Baroon", weight: 2.5 }
-  ],
-  "Ichra": [
-    { to: "Lahore Railway Station", weight: 2.0 },
-    { to: "Mall Road", weight: 2.0 },
-    { to: "Mozang", weight: 1.8 },
-    { to: "Samanabad", weight: 1.5 }
-  ],
-  "Nishtar Town": [
-    { to: "Mall Road", weight: 2.5 },
-    { to: "Samanabad", weight: 1.8 },
-    { to: "Yousafabad", weight: 1.2 },
-    { to: "Township", weight: 2.0 }
-  ],
-  "Township": [
-    { to: "Garden Town", weight: 2.2 },
-    { to: "Nishtar Town", weight: 2.0 },
-    { to: "Yousafabad", weight: 1.5 },
-    { to: "Johar Town", weight: 2.5 },
-    { to: "Wapda Town", weight: 3.0 }
-  ],
-  "Wapda Town": [
-    { to: "Minhaj-ul-Quran International", weight: 2.5 },
-    { to: "Shalimar Block", weight: 2.2 },
-    { to: "Model Town", weight: 2.2 },
-    { to: "Kot Lakhpat", weight: 1.8 },
-    { to: "Johar Town", weight: 2.5 },
-    { to: "Lahore Airport (Allama Iqbal)", weight: 4.8 }
-  ],
-  "Johar Town": [
-    { to: "Model Town", weight: 3.5 },
-    { to: "Township", weight: 2.5 },
-    { to: "Wapda Town", weight: 2.5 },
-    { to: "Kot Lakhpat", weight: 3.0 }
-  ],
-  "Mughalpura": [
-    { to: "Shalimar Gardens", weight: 2.8 },
-    { to: "Lahore Cantt", weight: 3.5 },
-    { to: "Baghbanpura", weight: 2.5 },
-    { to: "Mozang", weight: 3.0 }
-  ],
-  "Mozang": [
-    { to: "Lahore Railway Station", weight: 2.2 },
-    { to: "Badshahi Mosque", weight: 2.0 },
-    { to: "Shalimar Gardens", weight: 3.8 },
-    { to: "Lahore Cantt", weight: 2.8 },
-    { to: "Ichra", weight: 1.8 },
-    { to: "Mughalpura", weight: 3.0 }
-  ],
-  "Baghbanpura": [
-    { to: "Shalimar Gardens", weight: 2.0 },
-    { to: "Mughalpura", weight: 2.5 },
-    { to: "Wahdat Colony", weight: 2.0 },
-    { to: "Baroon", weight: 2.8 }
-  ],
-  "Wahdat Colony": [
-    { to: "Ferozepur Road", weight: 2.0 },
-    { to: "Baghbanpura", weight: 2.0 },
-    { to: "Baroon", weight: 1.5 },
-    { to: "Mughalpura", weight: 2.8 }
-  ],
-  "Samanabad": [
-    { to: "Mall Road", weight: 2.2 },
-    { to: "Anarkali Bazaar", weight: 1.5 },
-    { to: "Ichra", weight: 1.5 },
-    { to: "Nishtar Town", weight: 1.8 },
-    { to: "Yousafabad", weight: 1.2 }
-  ],
-  "Yousafabad": [
-    { to: "Lahore Zoo", weight: 1.5 },
-    { to: "Garden Town", weight: 1.5 },
-    { to: "Nishtar Town", weight: 1.2 },
-    { to: "Township", weight: 1.5 },
-    { to: "Samanabad", weight: 1.2 }
-  ],
-  "Kot Lakhpat": [
-    { to: "University of Punjab", weight: 2.8 },
-    { to: "Shalimar Block", weight: 1.5 },
-    { to: "Minhaj-ul-Quran International", weight: 3.0 },
-    { to: "Model Town", weight: 2.5 },
-    { to: "Wapda Town", weight: 1.8 },
-    { to: "Johar Town", weight: 3.0 }
-  ],
-  "Baroon": [
-    { to: "UET Lahore", weight: 3.0 },
-    { to: "Ferozepur Road", weight: 1.2 },
-    { to: "Shalimar Block", weight: 2.5 },
-    { to: "Baghbanpura", weight: 2.8 },
-    { to: "Wahdat Colony", weight: 1.5 }
-  ]
-};
-
-const createCustomIcon = (type) => {
+// Custom marker icons
+const createCustomIcon = (type, color = null) => {
   const colors = {
     start: '#0066ff',
     end: '#ff3333',
-    path: '#00aa55'
+    path: '#00aa55',
+    traffic: '#ff9900',
+    landmark: '#8B5CF6'
   };
+  
+  const bgColor = color || colors[type];
   
   return L.divIcon({
     className: 'custom-marker',
     html: `<div style="
-      background-color: ${colors[type]};
-      width: 28px;
-      height: 28px;
-      border-radius: 4px;
+      background-color: ${bgColor};
+      width: ${type === 'landmark' ? '20px' : '28px'};
+      height: ${type === 'landmark' ? '20px' : '28px'};
       border: 2px solid white;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
       display: flex;
       align-items: center;
       justify-content: center;
-    "><span style="
-      color: white;
-      font-weight: bold;
-      font-size: 12px;
-    ">${type === 'start' ? 'A' : type === 'end' ? 'B' : ''}</span></div>`,
-    iconSize: [28, 28],
-    iconAnchor: [14, 28],
-    popupAnchor: [0, -28]
+    ">
+      <span style="
+        color: white;
+        font-weight: bold;
+        font-size: ${type === 'landmark' ? '8px' : '12px'};
+      ">${type === 'start' ? 'A' : type === 'end' ? 'B' : type === 'landmark' ? '📍' : ''}</span>
+    </div>`,
+    iconSize: type === 'landmark' ? [20, 20] : [28, 28],
+    iconAnchor: type === 'landmark' ? [10, 10] : [14, 14],
+    popupAnchor: type === 'landmark' ? [0, -10] : [0, -14]
   });
 };
 
-function dijkstraVisualized(graph, start, end) {
-  const distances = {};
-  const previous = {};
-  const visited = new Set();
-  const steps = [];
+// Lahore city center coordinates
+const lahoreCenter = [31.5497, 74.3436];
 
-  for (const node in graph) {
-    distances[node] = Infinity;
-    previous[node] = null;
-  }
+// Location coordinates mapping
+const lahoreLocations = {
+  "UET Lahore": { lat: 31.5785, lng: 74.4022, type: "university", popularity: 95 },
+  "University of Punjab": { lat: 31.5680, lng: 74.4650, type: "university", popularity: 90 },
+  "Lahore Railway Station": { lat: 31.5712, lng: 74.3042, type: "transit", popularity: 85 },
+  "Lahore Airport (Allama Iqbal)": { lat: 31.5214, lng: 74.4031, type: "transit", popularity: 80 },
+  "Mall Road": { lat: 31.5636, lng: 74.3142, type: "shopping", popularity: 98 },
+  "Anarkali Bazaar": { lat: 31.5654, lng: 74.3331, type: "shopping", popularity: 92 },
+  "Minhaj-ul-Quran International": { lat: 31.5385, lng: 74.4032, type: "religious", popularity: 75 },
+  "Shalimar Gardens": { lat: 31.5882, lng: 74.3642, type: "tourist", popularity: 88 },
+  "Badshahi Mosque": { lat: 31.5883, lng: 74.3104, type: "tourist", popularity: 96 },
+  "Lahore Zoo": { lat: 31.5402, lng: 74.3331, type: "tourist", popularity: 82 },
+  "Canal Bank": { lat: 31.5736, lng: 74.3592, type: "scenic", popularity: 70 },
+  "Ferozepur Road": { lat: 31.5682, lng: 74.3782, type: "road", popularity: 85 },
+  "Gulberg III": { lat: 31.5454, lng: 74.3952, type: "commercial", popularity: 94 },
+  "Lahore Cantt": { lat: 31.5876, lng: 74.3492, type: "military", popularity: 60 },
+  "Model Town": { lat: 31.5185, lng: 74.4122, type: "residential", popularity: 78 },
+  "Garden Town": { lat: 31.5298, lng: 74.3832, type: "residential", popularity: 82 },
+  "Shalimar Block": { lat: 31.5500, lng: 74.4400, type: "residential", popularity: 65 },
+  "Ichra": { lat: 31.5570, lng: 74.3080, type: "commercial", popularity: 75 },
+  "Nishtar Town": { lat: 31.5350, lng: 74.3200, type: "residential", popularity: 68 },
+  "Township": { lat: 31.5100, lng: 74.3500, type: "residential", popularity: 72 },
+  "Wapda Town": { lat: 31.5200, lng: 74.3900, type: "residential", popularity: 70 },
+  "Johar Town": { lat: 31.4950, lng: 74.3700, type: "residential", popularity: 85 },
+  "Mughalpura": { lat: 31.5900, lng: 74.3700, type: "residential", popularity: 55 },
+  "Mozang": { lat: 31.5800, lng: 74.3250, type: "residential", popularity: 60 },
+  "Baghbanpura": { lat: 31.5950, lng: 74.3800, type: "residential", popularity: 50 },
+  "Wahdat Colony": { lat: 31.5850, lng: 74.3850, type: "residential", popularity: 52 },
+  "Samanabad": { lat: 31.5550, lng: 74.3400, type: "residential", popularity: 65 },
+  "Yousafabad": { lat: 31.5400, lng: 74.3500, type: "residential", popularity: 60 },
+  "Kot Lakhpat": { lat: 31.5300, lng: 74.4200, type: "industrial", popularity: 58 },
+  "Baroon": { lat: 31.5600, lng: 74.3950, type: "residential", popularity: 45 }
+};
 
-  distances[start] = 0;
-  steps.push({ node: start, dist: 0, action: `Start: distance(${start}) = 0`, visited: [] });
+// Traffic data management
+const TrafficLayer = ({ trafficData, onTrafficClick }) => {
+  useMapEvents({});
+  
+  if (!trafficData || trafficData.length === 0) return null;
+  
+  return (
+    <>
+      {trafficData.map((traffic, idx) => {
+        const location = lahoreLocations[traffic.road.split('-')[0]];
+        if (!location) return null;
+        
+        const densityColor = traffic.density > 70 ? '#ff3333' : traffic.density > 40 ? '#ff9900' : '#00aa55';
+        
+        return (
+          <CircleMarker
+            key={idx}
+            center={[location.lat, location.lng]}
+            radius={8 + (traffic.density / 20)}
+            pathOptions={{
+              color: densityColor,
+              fillColor: densityColor,
+              fillOpacity: 0.6,
+              weight: 2
+            }}
+            eventHandlers={{
+              click: () => onTrafficClick?.(traffic)
+            }}
+          >
+            <Popup>
+              <div className="p-2 text-center">
+                <strong className="text-sm block">{traffic.road}</strong>
+                <span className={`text-xs ${traffic.density > 70 ? 'text-red-500' : traffic.density > 40 ? 'text-orange-500' : 'text-green-500'}`}>
+                  Density: {traffic.density}%
+                </span>
+                {traffic.is_accident && (
+                  <div className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                    <AlertTriangle size={10} /> Accident Reported
+                  </div>
+                )}
+              </div>
+            </Popup>
+          </CircleMarker>
+        );
+      })}
+    </>
+  );
+};
 
-  let current = start;
-  while (current && current !== end) {
-    visited.add(current);
-    steps.push({ node: current, dist: distances[current], action: `Visit ${current} (dist: ${distances[current]})`, visited: Array.from(visited) });
-
-    if (graph[current]) {
-      for (const edge of graph[current]) {
-        const alt = distances[current] + edge.weight;
-        if (alt < distances[edge.to]) {
-          distances[edge.to] = alt;
-          previous[edge.to] = current;
-          if (!visited.has(edge.to)) {
-            steps.push({ node: edge.to, dist: alt, action: `Update: dist(${edge.to}) = ${alt} via ${current}`, visited: Array.from(visited) });
-          }
+const DijkstraVisualizer = ({ steps, onStepChange, currentStep }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const intervalRef = useRef(null);
+  const logEndRef = useRef(null);
+  
+  useEffect(() => {
+    if (isPlaying) {
+      intervalRef.current = setInterval(() => {
+        if (currentStep < steps.length - 1) {
+          onStepChange(currentStep + 1);
+        } else {
+          setIsPlaying(false);
         }
-      }
+      }, 800);
+    } else {
+      if (intervalRef.current) clearInterval(intervalRef.current);
     }
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [isPlaying, currentStep, steps.length, onStepChange]);
+  
+  useEffect(() => {
+    logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [currentStep]);
+  
+  if (!steps || steps.length === 0) return null;
+  
+  const progress = ((currentStep + 1) / steps.length) * 100;
+  
+  return (
+    <div className="bg-gray-900 rounded-none p-4 mt-4 ">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 bg-blue-600 rounded-none flex items-center justify-center ">
+            <GitBranch size={13} className="text-white" />
+          </div>
+          <h4 className="text-white text-xs font-bold uppercase tracking-wider">Dijkstra Algorithm</h4>
+        </div>
+        <div className="flex gap-1.5">
+          <button
+            onClick={() => onStepChange(Math.max(0, currentStep - 1))}
+            disabled={currentStep <= 0}
+            className="px-2.5 py-1.5 bg-white/10 text-white text-xs rounded-none disabled:opacity-30 hover:bg-white/20 transition-all font-medium"
+          >
+            Prev
+          </button>
+          <button
+            onClick={() => setIsPlaying(!isPlaying)}
+            className="px-2.5 py-1.5 bg-blue-600 text-white text-xs rounded-none hover:opacity-90 transition-all font-medium  flex items-center gap-1"
+          >
+            {isPlaying ? (
+              <><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Pause</>
+            ) : (
+              <><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg> Play</>
+            )}
+          </button>
+          <button
+            onClick={() => onStepChange(Math.min(steps.length - 1, currentStep + 1))}
+            disabled={currentStep >= steps.length - 1}
+            className="px-2.5 py-1.5 bg-white/10 text-white text-xs rounded-none disabled:opacity-30 hover:bg-white/20 transition-all font-medium"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+      
+      <div className="w-full h-1 bg-white/10 rounded-none mb-3 overflow-hidden">
+        <div
+          className="h-full bg-blue-600 rounded-none transition-all duration-300"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+      
+      <div className="bg-black/60 rounded-none p-3 font-mono text-xs max-h-44 overflow-y-auto border border-white/5">
+        {steps.slice(0, currentStep + 1).map((step, i) => {
+          const isActive = i === currentStep;
+          return (
+            <div key={i} className={`mb-1 px-1.5 py-0.5 rounded-none transition-colors ${isActive ? 'bg-blue-500/20' : ''}`}>
+              <span className="text-gray-500 mr-2 select-none">{String(i + 1).padStart(2, '0')}.</span>
+              <span className={isActive ? 'text-blue-300' : 'text-green-400'}>{step.action}</span>
+              {step.distance !== undefined && step.distance !== Infinity && (
+                <span className="text-yellow-400/80 ml-2">(dist: {step.distance})</span>
+              )}
+            </div>
+          );
+        })}
+        {currentStep < 0 && (
+          <div className="text-gray-500 italic">Press Play to start step-by-step visualization</div>
+        )}
+        <div ref={logEndRef} />
+      </div>
+      
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        <div className="bg-white/5 rounded-none p-2 text-center">
+          <span className="text-[10px] text-gray-400 uppercase block font-medium">Visited</span>
+          <span className="text-white text-sm font-bold font-mono">{steps[currentStep]?.visited_count || 0}</span>
+        </div>
+        <div className="bg-white/5 rounded-none p-2 text-center">
+          <span className="text-[10px] text-gray-400 uppercase block font-medium">Queue</span>
+          <span className="text-white text-sm font-bold font-mono">{steps[currentStep]?.queue_size || 0}</span>
+        </div>
+        <div className="bg-white/5 rounded-none p-2 text-center">
+          <span className="text-[10px] text-gray-400 uppercase block font-medium">Steps</span>
+          <span className="text-white text-sm font-bold font-mono">{currentStep + 1}/{steps.length}</span>
+        </div>
+      </div>
+    </div>
+  );
+};
 
-    let minNode = null;
-    let minDist = Infinity;
-    for (const node in distances) {
-      if (!visited.has(node) && distances[node] < minDist) {
-        minDist = distances[node];
-        minNode = node;
-      }
-    }
-    current = minNode;
-  }
-
-  const path = [];
-  let c = end;
-  if (previous[c] || c === start) {
-    while (c) {
-      path.unshift(c);
-      c = previous[c];
-    }
-  }
-
-  return { path: path.length > 0 && path[0] === start ? path : [], distance: distances[end] === Infinity ? -1 : distances[end], steps };
-}
-
-function MapClickHandler({ onMapClick }) {
+// Map click handler component
+const MapClickHandler = ({ onMapClick }) => {
   useMapEvents({
     click: (e) => {
       onMapClick(e.latlng);
     }
   });
   return null;
-}
+};
 
+// Main App Component
 function App() {
+  // State management
   const [startLocation, setStartLocation] = useState('');
   const [endLocation, setEndLocation] = useState('');
   const [startCoords, setStartCoords] = useState(null);
@@ -376,7 +271,68 @@ function App() {
   const [roadDistance, setRoadDistance] = useState(null);
   const [algoSteps, setAlgoSteps] = useState([]);
   const [currentStep, setCurrentStep] = useState(-1);
-
+  const [trafficData, setTrafficData] = useState([]);
+  const [considerTraffic, setConsiderTraffic] = useState(true);
+  const [alternativePaths, setAlternativePaths] = useState([]);
+  const [selectedPath, setSelectedPath] = useState(0);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [estimatedTime, setEstimatedTime] = useState(null);
+  const [statusMessage, setStatusMessage] = useState('');
+  const [statusType, setStatusType] = useState('info');
+  const [backendConnected, setBackendConnected] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [graphData, setGraphData] = useState(null);
+  const [trafficRoad, setTrafficRoad] = useState('');
+  const [trafficDensity, setTrafficDensity] = useState(50);
+  const [updatingTraffic, setUpdatingTraffic] = useState(false);
+  
+  // Show toast helper
+  const showStatusToast = useCallback((message, type = 'info', duration = 3000) => {
+    setStatusMessage(message);
+    setStatusType(type);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), duration);
+  }, []);
+  
+  // Fetch locations and graph from backend
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        const [locRes, graphRes] = await Promise.all([
+          fetch('http://localhost:18080/api/locations'),
+          fetch('http://localhost:18080/api/graph')
+        ]);
+        await locRes.json();
+        const graphJson = await graphRes.json();
+        if (graphJson.graph) setGraphData(graphJson.graph);
+        setBackendConnected(true);
+      } catch (error) {
+        console.error('Failed to fetch data:', error);
+        setBackendConnected(false);
+        showStatusToast('Backend server not running. Using local data.', 'error', 5000);
+      }
+    };
+    fetchInitialData();
+  }, [showStatusToast]);
+  
+  // Fetch traffic data periodically
+  useEffect(() => {
+    const fetchTraffic = async () => {
+      try {
+        const response = await fetch('http://localhost:18080/api/traffic');
+        const data = await response.json();
+        if (data.traffic) setTrafficData(data.traffic);
+      } catch {
+        console.error('Failed to fetch traffic');
+      }
+    };
+    fetchTraffic();
+    const interval = setInterval(fetchTraffic, 30000);
+    return () => clearInterval(interval);
+  }, []);
+  
+  // Find nearest location to clicked coordinates
   const findNearestLocation = (lat, lng) => {
     let nearest = null;
     let minDist = Infinity;
@@ -392,7 +348,8 @@ function App() {
     }
     return nearest;
   };
-
+  
+  // Handle map click for location selection
   const handleMapClick = (latlng) => {
     const nearest = findNearestLocation(latlng.lat, latlng.lng);
     
@@ -404,9 +361,14 @@ function App() {
       setPath([]);
       setDistance(null);
       setRoutePositions([]);
+      setAlgoSteps([]);
+      setCurrentStep(-1);
+      setAlternativePaths([]);
+      showStatusToast(`Start point set to ${nearest}`, 'success');
     } else if (!endLocation && !endCoords) {
       setEndLocation(nearest);
       setEndCoords([latlng.lat, latlng.lng]);
+      showStatusToast(`Destination set to ${nearest}`, 'success');
     } else {
       setStartLocation(nearest);
       setStartCoords([latlng.lat, latlng.lng]);
@@ -415,9 +377,14 @@ function App() {
       setPath([]);
       setDistance(null);
       setRoutePositions([]);
+      setAlgoSteps([]);
+      setCurrentStep(-1);
+      setAlternativePaths([]);
+      showStatusToast(`Start point changed to ${nearest}`, 'info');
     }
   };
-
+  
+  // Handle location selection from dropdown
   const handleSelectLocation = (location, type) => {
     const coords = lahoreLocations[location];
     if (type === 'start') {
@@ -426,70 +393,131 @@ function App() {
       setRoutePositions([]);
       setPath([]);
       setDistance(null);
+      setAlgoSteps([]);
+      setCurrentStep(-1);
+      setAlternativePaths([]);
     } else {
       setEndLocation(location);
       setEndCoords([coords.lat, coords.lng]);
       setRoutePositions([]);
       setPath([]);
       setDistance(null);
+      setAlgoSteps([]);
+      setCurrentStep(-1);
+      setAlternativePaths([]);
     }
   };
-
+  
+  // Calculate shortest path
   const handleCalculate = async () => {
-    if ((!startLocation && !startCoords) || (!endLocation && !endCoords)) return;
-
+    if ((!startLocation && !startCoords) || (!endLocation && !endCoords)) {
+      showStatusToast('Please select both start and destination', 'error', 3000);
+      return;
+    }
+    
     setLoading(true);
     setRoadDistance(null);
-
+    setAlternativePaths([]);
+    
     const start = startLocation || findNearestLocation(startCoords[0], startCoords[1]);
     const end = endLocation || findNearestLocation(endCoords[0], endCoords[1]);
-
-    const result = dijkstraVisualized(lahoreGraph, start, end);
-    setPath(result.path);
-    setDistance(result.distance);
-    setAlgoSteps(result.steps);
-    setCurrentStep(-1);
-
-    if (result.path.length > 0) {
-      const positions = result.path.map(loc => {
-        const coords = lahoreLocations[loc];
-        return [coords.lat, coords.lng];
+    
+    try {
+      // Get shortest path
+      const response = await fetch('http://localhost:18080/api/navigate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ start, end, consider_traffic: considerTraffic })
       });
-
-      const routeCoords = [];
-      let totalOSRMDistance = 0;
-
-      for (let i = 0; i < positions.length - 1; i++) {
-        const from = positions[i];
-        const to = positions[i + 1];
-        try {
-          const response = await fetch(
-            `https://router.project-osrm.org/route/v1/driving/${from[1]},${from[0]};${to[1]},${to[0]}?overview=full&geometries=geojson`
-          );
-          const data = await response.json();
-          if (data.code === 'Ok' && data.routes[0]) {
-            const geometry = data.routes[0].geometry.coordinates;
-            routeCoords.push(...geometry.map(coord => [coord[1], coord[0]]));
-            totalOSRMDistance += data.routes[0].distance;
-          } else {
+      const data = await response.json();
+      
+      if (data.error) {
+        showStatusToast(data.error, 'error', 5000);
+        setPath([]);
+        setDistance(null);
+      } else {
+        setPath(data.path || []);
+        setDistance(data.distance);
+        setEstimatedTime(data.estimated_time || data.distance * 2);
+        
+        // Generate algorithm steps visualization
+        const steps = [];
+        let visited = new Set();
+        let distances = {};
+        
+        distances[start] = 0;
+        steps.push({ action: `Initialize: distance(${start}) = 0`, distance: 0, visited_count: 0, queue_size: 1 });
+        
+        for (let i = 0; i < data.path.length - 1; i++) {
+          visited.add(data.path[i]);
+          steps.push({ 
+            action: `Visit ${data.path[i]}, update neighbors`, 
+            distance: distances[data.path[i]],
+            visited_count: visited.size,
+            queue_size: Math.max(1, data.path.length - i)
+          });
+        }
+        
+        steps.push({ action: `Goal reached! Shortest path found with total distance ${data.distance}`, distance: data.distance });
+        setAlgoSteps(steps);
+        setCurrentStep(steps.length - 1);
+        
+        // Get real road distance using OSRM
+        const positions = data.path.map(loc => {
+          const coords = lahoreLocations[loc];
+          return [coords.lat, coords.lng];
+        });
+        
+        let totalOSRMDistance = 0;
+        const routeCoords = [];
+        
+        for (let i = 0; i < positions.length - 1; i++) {
+          const from = positions[i];
+          const to = positions[i + 1];
+          try {
+            const osrmResponse = await fetch(
+              `https://router.project-osrm.org/route/v1/driving/${from[1]},${from[0]};${to[1]},${to[0]}?overview=full&geometries=geojson`
+            );
+            const osrmData = await osrmResponse.json();
+            if (osrmData.code === 'Ok' && osrmData.routes[0]) {
+              const geometry = osrmData.routes[0].geometry.coordinates;
+              routeCoords.push(...geometry.map(coord => [coord[1], coord[0]]));
+              totalOSRMDistance += osrmData.routes[0].distance;
+            } else {
+              routeCoords.push(from, to);
+            }
+          } catch {
             routeCoords.push(from, to);
           }
-        } catch (error) {
-          routeCoords.push(from, to);
+        }
+        
+        if (positions.length > 0 && routeCoords.length === 0) {
+          routeCoords.unshift(positions[0]);
+        }
+        
+        setRoutePositions(routeCoords.length > 0 ? routeCoords : positions);
+        setRoadDistance((totalOSRMDistance / 1000).toFixed(1));
+        
+        // Fetch alternative paths
+        const altResponse = await fetch('http://localhost:18080/api/alternatives', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ start, end, k: 3 })
+        });
+        const altData = await altResponse.json();
+        if (altData.paths && altData.paths.length > 0) {
+          setAlternativePaths(altData.paths);
         }
       }
-      
-      if (positions.length > 0) {
-        routeCoords.unshift(positions[0]);
-      }
-      
-      setRoutePositions(routeCoords.length > 0 ? routeCoords : positions);
-      setRoadDistance((totalOSRMDistance / 1000).toFixed(1));
+    } catch (error) {
+      console.error('Navigation error:', error);
+      showStatusToast('Failed to calculate route. Please check if the backend is running.', 'error', 5000);
     }
-
+    
     setLoading(false);
   };
-
+  
+  // Clear all selections
   const handleClear = () => {
     setStartLocation('');
     setEndLocation('');
@@ -498,315 +526,626 @@ function App() {
     setPath([]);
     setDistance(null);
     setRoutePositions([]);
+    setAlgoSteps([]);
+    setCurrentStep(-1);
+    setAlternativePaths([]);
+    setSelectedPath(0);
+    setEstimatedTime(null);
+    setRoadDistance(null);
+    showStatusToast('All selections cleared', 'info', 2000);
+  };
+  
+  // Swap start and destination
+  const handleSwap = () => {
+    setStartLocation(endLocation);
+    setEndLocation(startLocation);
+    setStartCoords(endCoords);
+    setEndCoords(startCoords);
+    setPath([]);
+    setDistance(null);
+    setRoutePositions([]);
+    showStatusToast('Start and destination swapped', 'info', 2000);
+  };
+  
+  // Update traffic conditions
+  const handleTrafficUpdate = async () => {
+    if (!trafficRoad) {
+      showStatusToast('Select a road segment', 'error');
+      return;
+    }
+    setUpdatingTraffic(true);
+    try {
+      const res = await fetch('http://localhost:18080/api/traffic', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ road: trafficRoad, density: trafficDensity })
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        showStatusToast(`Traffic updated: ${trafficRoad} (${trafficDensity}%)`, 'success');
+        const trafficRes = await fetch('http://localhost:18080/api/traffic');
+        const trafficJson = await trafficRes.json();
+        if (trafficJson.traffic) setTrafficData(trafficJson.traffic);
+      } else {
+        showStatusToast('Failed to update traffic', 'error');
+      }
+    } catch {
+      showStatusToast('Backend offline', 'error');
+    }
+    setUpdatingTraffic(false);
   };
 
+  // Collect all road segments from graph data for traffic selector
+  const roadSegments = graphData
+    ? Object.entries(graphData).flatMap(([from, edges]) =>
+        edges.map(e => ({ id: `${from}-${e.to}`, label: `${from} → ${e.to}` }))
+      )
+    : [];
+
+  // Filter locations based on search term
+  const filteredLocations = Object.keys(lahoreLocations).filter(loc =>
+    loc.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  
+  // Get location type color
+  const getLocationTypeColor = (type) => {
+    const colors = {
+      university: '#8B5CF6',
+      transit: '#0066ff',
+      shopping: '#ff9900',
+      tourist: '#ff3333',
+      religious: '#00aa55',
+      scenic: '#00cccc',
+      commercial: '#ff6600',
+      residential: '#666666',
+      military: '#996633',
+      industrial: '#999999',
+      road: '#00aa55'
+    };
+    return colors[type] || '#0066ff';
+  };
+  
   return (
-    <div className="min-h-screen w-full bg-[#f0f0f0] p-4 md:p-6">
-      <div className="max-w-7xl mx-auto">
-        <header className="mb-6 pb-4 border-b-2 border-black">
-          <div className="flex justify-between items-end flex-wrap gap-4">
-            <div>
-              <p className="text-xs font-bold text-[#0066ff] uppercase tracking-widest mb-1">DSA Project</p>
-                  <h1 className="text-2xl md:text-3xl font-black text-black flex items-center gap-3">
-                    <MapPin className="text-[#0066ff]" />
-                    Smart City Traffic Navigation
-                  </h1>
-                  <p className="text-sm text-gray-600 mt-1">Dijkstra Algorithm for Optimal Route Finding</p>
+    <div className="h-screen w-full bg-[#f0f2f5] flex flex-col overflow-hidden">
+      {/* Toast Notification */}
+      <div
+        className={`fixed top-20 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 ${
+          showToast ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'
+        }`}
+      >
+        <div className={`px-5 py-3 rounded-none  text-sm font-medium flex items-center gap-2.5 ${
+          statusType === 'error' ? 'bg-red-500/90 text-white' :
+          statusType === 'success' ? 'bg-emerald-500/90 text-white' :
+          'bg-gray-900/90 text-white'
+        }`}>
+          {statusType === 'error' ? <AlertTriangle size={14} /> :
+           statusType === 'success' ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg> :
+           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>}
+          {statusMessage}
+        </div>
+      </div>
+
+      {/* Top Navbar */}
+      <div className="h-14 shrink-0 bg-white border-b border-gray-200/70 flex items-center justify-between px-4  z-30">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-2 hover:bg-gray-100 rounded-none transition-colors"
+            title={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
+          >
+            <Menu size={18} className="text-gray-600" />
+          </button>
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 bg-blue-600 rounded-none flex items-center justify-center  ">
+              <Navigation size={16} className="text-white" />
             </div>
-            <div className="text-right">
-              <p className="text-xs font-bold text-gray-500 uppercase">Spring 2026</p>
-              <p className="text-sm font-medium text-black">Semester 4</p>
+            <div>
+              <h1 className="font-extrabold text-sm tracking-tight text-gray-900">Smart City Navigation</h1>
+              <p className="text-[10px] text-gray-400 font-medium leading-tight">Dijkstra Visualizer — Lahore</p>
             </div>
           </div>
-        </header>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-2 bg-gray-50 rounded-none px-3 py-1.5 border border-gray-200">
+            <div className={`w-2 h-2 rounded-none ${backendConnected ? 'bg-emerald-500' : 'bg-red-400'}`} />
+            <span className="text-[11px] font-medium text-gray-500">{backendConnected ? 'Connected' : 'Offline'}</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
+            <Route size={12} />
+            <span className="hidden sm:inline font-mono font-medium">O((V+E)logV)</span>
+          </div>
+        </div>
+      </div>
 
-        <main className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          <div className="lg:col-span-3 space-y-4">
-            <div className="bg-white border-2 border-black p-4">
-              <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-200">
-                <div className="w-8 h-8 bg-black flex items-center justify-center">
-                  <Navigation size={16} className="text-white" />
+      {/* Main content area */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar */}
+        <div className={`bg-white/95 border-r border-gray-200/50 transition-all duration-300 ease-out shrink-0 overflow-hidden ${
+          sidebarOpen ? 'w-80' : 'w-0'
+        }`}>
+          <div className="p-4 h-full overflow-y-auto">
+            {/* Sidebar Header */}
+            <div className="flex justify-between items-center mb-5 pb-4 border-b border-gray-200/50">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 bg-blue-600 rounded-none flex items-center justify-center  ">
+                  <Navigation size={17} className="text-white" />
                 </div>
-                  <h2 className="font-bold text-black text-sm uppercase tracking-wide">Smart Navigation</h2>
+                <div>
+                  <h2 className="font-extrabold text-sm tracking-tight text-gray-900">Smart Nav</h2>
+                  <p className="text-[10px] text-gray-400 font-medium">Lahore Navigation</p>
+                </div>
               </div>
-              
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs font-bold text-gray-700 uppercase mb-2 block">Start Point</label>
-                  <select 
-                    className="w-full border-2 border-gray-400 bg-white p-3 text-sm font-medium text-black focus:border-blue-600 outline-none"
-                    value={startLocation}
-                    onChange={(e) => handleSelectLocation(e.target.value, 'start')}
-                  >
-                    <option value="" className="text-gray-500">Select Start</option>
-                    {Object.keys(lahoreLocations).map(loc => (
-                      <option key={loc} value={loc} className="text-black">{loc}</option>
-                    ))}
-                  </select>
-                </div>
+              <button onClick={() => setSidebarOpen(false)} className="p-1.5 hover:bg-gray-100 rounded-none transition-colors">
+                <X size={16} className="text-gray-400" />
+              </button>
+            </div>
+            
+            {/* Location Search */}
+            <div className="mb-3">
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search all locations..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-none text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all"
+                />
+              </div>
+            </div>
 
-                <div className="flex justify-center py-1">
-                  <div className="w-px h-6 bg-gray-300"></div>
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-gray-700 uppercase mb-2 block">Destination</label>
-                  <select 
-                    className="w-full border-2 border-gray-400 bg-white p-3 text-sm font-medium text-black focus:border-blue-600 outline-none"
-                    value={endLocation}
-                    onChange={(e) => handleSelectLocation(e.target.value, 'end')}
-                  >
-                    <option value="" className="text-gray-500">Select Destination</option>
-                    {Object.keys(lahoreLocations).filter(l => l !== startLocation).map(loc => (
-                      <option key={loc} value={loc} className="text-black">{loc}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <button 
-                  onClick={handleCalculate}
-                  disabled={(!startLocation && !startCoords) || (!endLocation && !endCoords) || loading}
-                  className="w-full bg-[#0066ff] hover:bg-[#0055dd] disabled:bg-gray-400 text-white font-bold py-3 px-4 text-sm uppercase tracking-wide"
-                >
-                  {loading ? 'Calculating...' : 'Find Shortest Path'}
-                </button>
-
-                {(startLocation || endLocation || startCoords || endCoords) && (
-                  <button 
-                    onClick={handleClear}
-                    className="w-full bg-white border-2 border-black hover:bg-black hover:text-white text-black font-bold py-2 px-4 text-sm uppercase flex items-center justify-center gap-2"
-                  >
-                    <Trash2 size={14} /> Clear
-                  </button>
+            {/* Location List */}
+            {searchTerm && (
+              <div className="mb-4 border border-gray-200 bg-white max-h-48 overflow-y-auto">
+                {filteredLocations.length === 0 ? (
+                  <div className="p-3 text-xs text-gray-400 text-center">No locations found</div>
+                ) : (
+                  filteredLocations.map(loc => {
+                    const info = lahoreLocations[loc];
+                    return (
+                      <button
+                        key={loc}
+                        onClick={() => {
+                          if (!startLocation) {
+                            handleSelectLocation(loc, 'start');
+                            setSearchTerm('');
+                          } else if (!endLocation && loc !== startLocation) {
+                            handleSelectLocation(loc, 'end');
+                            setSearchTerm('');
+                          } else {
+                            handleSelectLocation(loc, 'start');
+                            setSearchTerm('');
+                          }
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-gray-50 border-b border-gray-100 last:border-0 transition-colors"
+                      >
+                        <div className="w-2 h-2 shrink-0" style={{ backgroundColor: getLocationTypeColor(info.type) }} />
+                        <span className="text-xs font-medium text-gray-800 flex-1">{loc}</span>
+                        <span className="text-[10px] uppercase text-gray-400 font-medium">{info.type}</span>
+                      </button>
+                    );
+                  })
                 )}
               </div>
-            </div>
-
-            <div className="bg-white border-2 border-black p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-3 h-3 bg-[#0066ff]"></div>
-                <span className="text-xs font-bold text-black uppercase">First Click = Start</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-[#ff3333]"></div>
-                <span className="text-xs font-bold text-black uppercase">Second Click = Destination</span>
-              </div>
-            </div>
-
-            <div className="bg-black text-white p-4">
-              <h3 className="text-xs font-bold uppercase tracking-wide mb-3 text-white">Algorithm Info</h3>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Method:</span>
-                  <span className="font-bold text-[#0066ff]">Dijkstra</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Data:</span>
-                  <span className="font-mono text-white">Priority Queue</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Complexity:</span>
-                  <span className="font-mono text-white">O((V+E)logV)</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Map:</span>
-                  <span className="font-bold text-[#00aa55]">OpenStreetMap</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Locations:</span>
-                  <span className="font-mono text-white">30</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="lg:col-span-6">
-            <div className="bg-white border-2 border-black p-4 h-full">
-              <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-200">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-black flex items-center justify-center">
-                    <GitBranch size={16} className="text-white" />
-                  </div>
-                  <h2 className="font-bold text-black text-sm uppercase tracking-wide">Map View</h2>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-gray-600 uppercase">Lahore, Pakistan</span>
-                </div>
-              </div>
-              
-              <div className="h-[450px] border-2 border-gray-300">
-                <MapContainer 
-                  center={lahoreCenter} 
-                  zoom={12} 
-                  style={{ height: '100%', width: '100%' }}
-                  scrollWheelZoom={true}
+            )}
+            
+            {/* Start Location */}
+            <div className="mb-3">
+              <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5 block">Start Point</label>
+              <div className="relative">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 w-2 h-2 rounded-none bg-blue-500  " />
+                <select 
+                  className="w-full border border-gray-200 bg-gray-50 pl-8 pr-8 py-2.5 text-sm font-medium text-gray-900 rounded-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 outline-none transition-all"
+                  value={startLocation}
+                  onChange={(e) => handleSelectLocation(e.target.value, 'start')}
                 >
-                  <TileLayer
-                    attribution='&copy; OSM'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  />
-                  
-                  <MapClickHandler onMapClick={handleMapClick} />
-
-                  {startCoords && (
-                    <Marker position={startCoords} icon={createCustomIcon('start')}>
-                      <Popup>
-                        <div className="text-center p-1">
-                          <strong className="text-[#0066ff]">Start Point</strong>
-                        </div>
-                      </Popup>
-                    </Marker>
-                  )}
-
-                  {endCoords && (
-                    <Marker position={endCoords} icon={createCustomIcon('end')}>
-                      <Popup>
-                        <div className="text-center p-1">
-                          <strong className="text-[#ff3333]">Destination</strong>
-                        </div>
-                      </Popup>
-                    </Marker>
-                  )}
-
-                  {routePositions.length > 0 && (
-                    <Polyline 
-                      positions={routePositions}
-                      pathOptions={{
-                        color: '#00aa55',
-                        weight: 5,
-                        opacity: 0.9
-                      }}
-                    />
-                  )}
-                </MapContainer>
+                  <option value="" className="text-gray-400">Select Start</option>
+                  {filteredLocations.map(loc => (
+                    <option key={loc} value={loc}>{loc}</option>
+                  ))}
+                </select>
               </div>
             </div>
-          </div>
-
-          <div className="lg:col-span-3 space-y-4">
-            <div className="bg-white border-2 border-black p-4">
-              <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-200">
-                <div className="w-8 h-8 bg-black flex items-center justify-center">
-                  <Activity size={16} className="text-white" />
-                </div>
-                <h2 className="font-bold text-black text-sm uppercase tracking-wide">Results</h2>
+            
+            {/* Swap Button */}
+            <div className="flex justify-center py-0.5">
+              <button
+                onClick={handleSwap}
+                disabled={!startLocation && !endLocation}
+                className="p-1.5 hover:bg-gray-100 rounded-none transition-all disabled:opacity-30 group"
+              >
+                <ArrowRight size={16} className="text-gray-400 rotate-90 group-hover:text-blue-500 transition-colors" />
+              </button>
+            </div>
+            
+            {/* Destination */}
+            <div className="mb-4">
+              <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5 block">Destination</label>
+              <div className="relative">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 w-2 h-2 rounded-none bg-red-400  " />
+                <select 
+                  className="w-full border border-gray-200 bg-gray-50 pl-8 pr-8 py-2.5 text-sm font-medium text-gray-900 rounded-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 outline-none transition-all"
+                  value={endLocation}
+                  onChange={(e) => handleSelectLocation(e.target.value, 'end')}
+                >
+                  <option value="" className="text-gray-400">Select Destination</option>
+                  {filteredLocations.filter(l => l !== startLocation).map(loc => (
+                    <option key={loc} value={loc}>{loc}</option>
+                  ))}
+                </select>
               </div>
+            </div>
+            
+            {/* Traffic Toggle */}
+            <div className="mb-4 flex items-center justify-between p-3 bg-gray-50/80 rounded-none border border-gray-100">
+              <div className="flex items-center gap-2.5">
+                <div className={`p-1.5 rounded-none ${considerTraffic ? 'bg-orange-100' : 'bg-gray-100'}`}>
+                  <AlertTriangle size={14} className={considerTraffic ? 'text-orange-500' : 'text-gray-400'} />
+                </div>
+                <span className="text-xs font-semibold text-gray-700">Consider Traffic</span>
+              </div>
+              <button
+                onClick={() => setConsiderTraffic(!considerTraffic)}
+                className={`px-2.5 py-1 text-xs font-bold uppercase tracking-wider border-2 ${
+                  considerTraffic ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-500 border-gray-300'
+                }`}
+              >
+                {considerTraffic ? 'ON' : 'OFF'}
+              </button>
+            </div>
+
+            {/* Traffic Management */}
+            <details className="mb-4 group">
+              <summary className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2 cursor-pointer hover:text-gray-700 flex items-center gap-1.5 select-none">
+                <AlertTriangle size={12} /> Traffic Simulation
+                <svg className="ml-auto group-open:rotate-180 transition-transform" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m6 9 6 6 6-6"/></svg>
+              </summary>
+              <div className="space-y-2.5 border border-gray-200 bg-gray-50 p-3">
+                <p className="text-[10px] text-gray-400 leading-relaxed">
+                  Simulate traffic on any road segment. Dijkstra's algorithm will adjust path weights based on density.
+                </p>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Road Segment</label>
+                  <select
+                    value={trafficRoad}
+                    onChange={(e) => setTrafficRoad(e.target.value)}
+                    className="w-full border border-gray-200 bg-white px-2.5 py-2 text-xs text-gray-800 rounded-none focus:border-blue-500 outline-none"
+                  >
+                    <option value="">Select road...</option>
+                    {roadSegments.map(seg => (
+                      <option key={seg.id} value={seg.id}>{seg.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">
+                    Density: <span className="text-blue-600 font-mono">{trafficDensity}%</span>
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={trafficDensity}
+                    onChange={(e) => setTrafficDensity(Number(e.target.value))}
+                    className="w-full accent-blue-600"
+                  />
+                  <div className="flex justify-between text-[9px] text-gray-400 mt-0.5">
+                    <span>Clear</span>
+                    <span>Moderate</span>
+                    <span>Heavy</span>
+                  </div>
+                </div>
+                <button
+                  onClick={handleTrafficUpdate}
+                  disabled={!trafficRoad || updatingTraffic}
+                  className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-bold py-2 uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5"
+                >
+                  {updatingTraffic ? <Loader2 size={12} className="animate-spin" /> : <AlertTriangle size={12} />}
+                  {updatingTraffic ? 'Updating...' : 'Apply Traffic'}
+                </button>
+              </div>
+            </details>
+            
+            {/* Action Buttons */}
+            <div className="space-y-2.5">
+              <button 
+                onClick={handleCalculate}
+                disabled={(!startLocation && !startCoords) || (!endLocation && !endCoords) || loading}
+                className="w-full bg-blue-600 hover:opacity-90 disabled:opacity-40 text-white font-bold py-2.5 px-4 text-sm uppercase tracking-wider rounded-none transition-all    flex items-center justify-center gap-2"
+              >
+                {loading ? <Loader2 size={16} className="animate-spin" /> : <Route size={16} />}
+                {loading ? 'Calculating...' : 'Find Shortest Path'}
+              </button>
               
-              {distance !== null && distance !== -1 ? (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-[#0066ff] text-white p-3 text-center">
-                      <span className="text-[10px] font-bold uppercase opacity-70">Distance</span>
-                      <p className="text-xl font-black">{distance.toFixed(1)} km</p>
+              <button 
+                onClick={handleClear}
+                className="w-full bg-white border border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700 font-semibold py-2.5 px-4 text-sm rounded-none transition-all flex items-center justify-center gap-2 "
+              >
+                <Trash2 size={14} /> Clear All
+              </button>
+            </div>
+            
+            {/* Results Panel */}
+            {distance !== null && distance !== -1 && (
+              <div className="mt-5 animate-slide-in">
+                <div className="bg-white rounded-none p-4 border border-gray-100 ">
+                  <h3 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-3">Trip Summary</h3>
+                  <div className="grid grid-cols-2 gap-2.5 mb-3">
+                    <div className="bg-blue-600 rounded-none p-3 text-center  ">
+                      <span className="text-[9px] font-bold uppercase tracking-wider opacity-75 block">Distance</span>
+                      <p className="text-xl font-black tracking-tight">{distance.toFixed(1)} <span className="text-sm font-medium opacity-75">km</span></p>
                     </div>
-                    <div className="bg-[#00aa55] text-white p-3 text-center">
-                      <span className="text-[10px] font-bold uppercase opacity-70">Stops</span>
-                      <p className="text-xl font-black">{path.length}</p>
+                    <div className="bg-emerald-600 rounded-none p-3 text-center  ">
+                      <span className="text-[9px] font-bold uppercase tracking-wider opacity-75 block">Stops</span>
+                      <p className="text-xl font-black tracking-tight">{path.length} <span className="text-sm font-medium opacity-75">nodes</span></p>
                     </div>
                   </div>
-
+                  
                   {roadDistance && (
-                    <div className="bg-[#8B5CF6] text-white p-3 text-center">
-                      <span className="text-[10px] font-bold uppercase opacity-70">Road Distance</span>
-                      <p className="text-xl font-black">{roadDistance} km</p>
+                    <div className="flex items-center justify-between bg-blue-50 rounded-none px-3 py-2.5 mb-3 border border-blue-100">
+                      <span className="text-xs font-medium text-blue-700">Road Distance</span>
+                      <span className="text-sm font-bold text-blue-700 font-mono">{roadDistance} km</span>
                     </div>
                   )}
-
+                  
+                  {estimatedTime && (
+                    <div className="bg-purple-600 rounded-none p-3 text-center mb-3  ">
+                      <span className="text-[9px] font-bold uppercase tracking-wider opacity-75 block">Estimated Time</span>
+                      <p className="text-xl font-black tracking-tight">{estimatedTime} <span className="text-sm font-medium opacity-75">min</span></p>
+                    </div>
+                  )}
+                  
+                  {/* Path Sequence */}
                   <div>
-                    <span className="text-xs font-bold text-gray-700 uppercase block mb-2">Path Sequence</span>
-                    <div className="space-y-1">
+                    <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-2">Path Sequence</span>
+                    <div className="space-y-1 max-h-44 overflow-y-auto custom-scrollbar pr-1">
                       {path.map((step, i) => (
-                        <div key={i} className="flex items-center gap-2 bg-gray-100 p-2">
-                          <div className={`w-6 h-6 flex items-center justify-center text-xs font-bold ${
-                            i === 0 ? 'bg-[#0066ff] text-white' : 
-                            i === path.length - 1 ? 'bg-[#ff3333] text-white' : 
-                            'bg-[#333] text-white'
+                        <div key={i} className="flex items-center gap-2.5 bg-white p-2.5 rounded-none border border-gray-100 hover:border-gray-200 transition-all hover:">
+                          <div className={`w-6 h-6 flex items-center justify-center text-[10px] font-bold rounded-none shrink-0 ${
+                            i === 0 ? 'bg-blue-600 text-white  ' : 
+                            i === path.length - 1 ? 'bg-red-500 text-white  ' : 
+                            'bg-gray-200 text-gray-600'
                           }`}>
                             {i + 1}
                           </div>
-                          <span className="text-sm font-medium text-black">{step}</span>
+                          <span className="text-xs font-medium text-gray-800 leading-tight">{step}</span>
+                          {i < path.length - 1 && (
+                            <svg className="ml-auto shrink-0 text-gray-300" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                          )}
                         </div>
                       ))}
                     </div>
                   </div>
-
-                  {algoSteps.length > 0 && (
-                    <div className="border-t-2 pt-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs font-bold text-gray-700 uppercase">Algorithm Steps</span>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => setCurrentStep(Math.max(-1, currentStep - 1))}
-                            disabled={currentStep <= -1}
-                            className="text-xs px-2 py-1 bg-black text-white disabled:bg-gray-400"
-                          >
-                            Prev
-                          </button>
-                          <button
-                            onClick={() => setCurrentStep(Math.min(algoSteps.length - 1, currentStep + 1))}
-                            disabled={currentStep >= algoSteps.length - 1}
-                            className="text-xs px-2 py-1 bg-black text-white disabled:bg-gray-400"
-                          >
-                            Next
-                          </button>
+                </div>
+              </div>
+            )}
+            
+            {/* Algorithm Visualization */}
+            {algoSteps.length > 0 && (
+              <DijkstraVisualizer 
+                steps={algoSteps}
+                currentStep={currentStep}
+                onStepChange={setCurrentStep}
+              />
+            )}
+            
+            {/* Alternative Paths */}
+            {alternativePaths.length > 1 && (
+              <div className="mt-4 animate-slide-in">
+                <div className="bg-white rounded-none p-4 border border-gray-100 ">
+                  <h3 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <GitBranch size={12} /> Alternative Routes
+                  </h3>
+                  <div className="space-y-2">
+                    {alternativePaths.slice(1).map((alt, idx) => (
+                      <div 
+                        key={idx}
+                        className={`p-3 rounded-none cursor-pointer transition-all ${
+                          selectedPath === idx + 1
+                            ? 'border-2 border-purple-500 bg-purple-50/50 '
+                            : 'border border-gray-200 bg-white hover:border-gray-300 hover:'
+                        }`}
+                        onClick={() => {
+                          setSelectedPath(idx + 1);
+                          setPath(alt.path);
+                          setDistance(alt.distance);
+                          setEstimatedTime(alt.distance * 2);
+                        }}
+                      >
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-xs font-bold flex items-center gap-1.5">
+                            <div className={`w-4 h-4 rounded-none flex items-center justify-center text-[9px] font-bold ${
+                              selectedPath === idx + 1 ? 'bg-purple-500 text-white' : 'bg-gray-200 text-gray-500'
+                            }`}>
+                              {idx + 2}
+                            </div>
+                            Route {idx + 2}
+                          </span>
+                          <span className="text-xs font-mono font-bold text-gray-600">{alt.distance.toFixed(1)} km</span>
+                        </div>
+                        <div className="text-[11px] text-gray-400 truncate">
+                          {alt.path.slice(0, 3).join(' → ')}...
                         </div>
                       </div>
-                      <div className="bg-gray-900 text-green-400 p-3 font-mono text-xs max-h-48 overflow-y-auto">
-                        {algoSteps.slice(0, currentStep + 1).map((step, i) => (
-                          <div key={i} className="mb-1">
-                            <span className="text-gray-500">{i + 1}.</span> {step.action}
-                          </div>
-                        ))}
-                        {currentStep < 0 && (
-                          <div className="text-gray-500 italic">Press Next to start step-by-step visualization</div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : distance === -1 ? (
-                <div className="text-center py-6 bg-red-50 border border-red-200">
-                  <p className="text-[#ff3333] font-bold text-sm">No Path Found</p>
-                  <p className="text-xs text-gray-500 mt-1">No route exists between these locations.</p>
-                </div>
-              ) : (
-                <div className="text-center py-8 bg-gray-100 border-2 border-dashed border-gray-300">
-                  <div className="w-12 h-12 bg-gray-200 mx-auto mb-2 flex items-center justify-center">
-                    <ArrowRight size={20} className="text-gray-500" />
+                    ))}
                   </div>
-                  <p className="text-sm text-gray-700 font-medium">Select start and destination</p>
                 </div>
-              )}
-            </div>
-
-            <div className="bg-white border-2 border-black p-4">
-              <h3 className="text-xs font-bold text-black uppercase mb-3 pb-2 border-b border-gray-200">All Locations</h3>
-              <div className="space-y-1 max-h-64 overflow-y-auto">
-                {Object.keys(lahoreLocations).map(loc => (
-                  <div 
-                    key={loc}
-                    className={`text-xs p-2 cursor-pointer flex items-center gap-2 border-b border-gray-100 ${
-                      startLocation === loc ? 'bg-[#0066ff] text-white' :
-                      endLocation === loc ? 'bg-[#ff3333] text-white' :
-                      path.includes(loc) ? 'bg-[#00aa55] text-white' :
-                      'bg-white text-black hover:bg-gray-100'
-                    }`}
-                    onClick={() => handleSelectLocation(loc, startLocation ? 'end' : 'start')}
-                  >
-                    <MapPin size={10} className={startLocation === loc || endLocation === loc || path.includes(loc) ? 'text-white' : 'text-gray-500'} />
-                    <span className={startLocation === loc || endLocation === loc || path.includes(loc) ? 'text-white' : 'text-black'}>{loc}</span>
-                  </div>
-                ))}
+              </div>
+            )}
+            
+            {/* Info Panel */}
+            <div className="mt-4 bg-gray-900 rounded-none p-4  animate-fade-in">
+              <h3 className="text-[11px] font-bold text-white/80 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <Activity size={12} /> Algorithm Info
+              </h3>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center bg-white/5 rounded-none px-3 py-2">
+                  <span className="text-xs text-gray-400">Method</span>
+                  <span className="text-xs font-bold text-blue-400">Dijkstra</span>
+                </div>
+                <div className="flex justify-between items-center bg-white/5 rounded-none px-3 py-2">
+                  <span className="text-xs text-gray-400">Data Structure</span>
+                  <span className="text-xs font-mono text-white">Priority Queue</span>
+                </div>
+                <div className="flex justify-between items-center bg-white/5 rounded-none px-3 py-2">
+                  <span className="text-xs text-gray-400">Complexity</span>
+                  <span className="text-xs font-mono text-emerald-400">O((V+E)logV)</span>
+                </div>
+                <div className="flex justify-between items-center bg-white/5 rounded-none px-3 py-2">
+                  <span className="text-xs text-gray-400">Locations</span>
+                  <span className="text-xs font-mono text-white">{Object.keys(lahoreLocations).length}</span>
+                </div>
+                <div className="flex justify-between items-center bg-white/5 rounded-none px-3 py-2">
+                  <span className="text-xs text-gray-400">Edges</span>
+                  <span className="text-xs font-mono text-white">~120</span>
+                </div>
               </div>
             </div>
           </div>
-        </main>
-
-        <footer className="mt-6 pt-4 border-t-2 border-black flex justify-between items-center text-xs text-gray-600">
-          <span>DSA Project - Semester 4</span>
-          <span>React + Leaflet + Dijkstra</span>
-        </footer>
+        </div>
+        
+        {/* Main Map Area */}
+        <div className="flex-1 relative">
+          <div className="absolute inset-0">
+            <MapContainer 
+              center={lahoreCenter} 
+              zoom={12} 
+              style={{ height: '100%', width: '100%' }}
+              scrollWheelZoom={true}
+              zoomControl={true}
+            >
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              
+              <MapClickHandler onMapClick={handleMapClick} />
+              
+              {/* Traffic Layer */}
+              <TrafficLayer trafficData={trafficData} onTrafficClick={(t) => console.log(t)} />
+              
+              {/* Start Marker */}
+              {startCoords && (
+                <Marker position={startCoords} icon={createCustomIcon('start')}>
+                  <Popup>
+                    <div className="text-center p-1">
+                      <strong className="text-blue-600 block text-sm">Start Point</strong>
+                      <span className="text-xs text-gray-600">{startLocation}</span>
+                    </div>
+                  </Popup>
+                </Marker>
+              )}
+              
+              {/* End Marker */}
+              {endCoords && (
+                <Marker position={endCoords} icon={createCustomIcon('end')}>
+                  <Popup>
+                    <div className="text-center p-1">
+                      <strong className="text-red-500 block text-sm">Destination</strong>
+                      <span className="text-xs text-gray-600">{endLocation}</span>
+                    </div>
+                  </Popup>
+                </Marker>
+              )}
+              
+              {/* All Location Markers */}
+              {filteredLocations.map(location => {
+                const coords = lahoreLocations[location];
+                const isStart = location === startLocation;
+                const isEnd = location === endLocation;
+                
+                if (isStart || isEnd) return null;
+                
+                return (
+                  <Marker 
+                    key={location}
+                    position={[coords.lat, coords.lng]} 
+                    icon={createCustomIcon('landmark', getLocationTypeColor(coords.type))}
+                    eventHandlers={{
+                      click: () => {
+                        if (!startLocation) {
+                          handleSelectLocation(location, 'start');
+                        } else if (!endLocation && location !== startLocation) {
+                          handleSelectLocation(location, 'end');
+                        }
+                      }
+                    }}
+                  >
+                    <Popup>
+                      <div className="text-center p-1.5 min-w-[120px]">
+                        <strong className="block text-sm mb-0.5">{location}</strong>
+                        <span className="text-[11px] text-gray-400 capitalize font-medium">{coords.type}</span>
+                        <button
+                          onClick={() => {
+                            if (!startLocation) {
+                              handleSelectLocation(location, 'start');
+                            } else if (!endLocation && location !== startLocation) {
+                              handleSelectLocation(location, 'end');
+                            }
+                          }}
+                          className="mt-2.5 w-full text-xs bg-blue-600 text-white font-semibold px-3 py-1.5 rounded-none  "
+                        >
+                          Set as {!startLocation ? 'Start' : 'Destination'}
+                        </button>
+                      </div>
+                    </Popup>
+                  </Marker>
+                );
+              })}
+              
+              {/* Route Polyline */}
+              {routePositions.length > 0 && (
+                <Polyline 
+                  positions={routePositions}
+                  pathOptions={{
+                    color: selectedPath > 0 ? '#8B5CF6' : '#00aa55',
+                    weight: 5,
+                    opacity: 0.85,
+                    lineCap: 'round',
+                    lineJoin: 'round'
+                  }}
+                />
+              )}
+              
+              {/* Highlighted Path Nodes */}
+              {path.map((loc, idx) => {
+                if (idx === 0 || idx === path.length - 1) return null;
+                const coords = lahoreLocations[loc];
+                if (!coords) return null;
+                return (
+                  <CircleMarker
+                    key={idx}
+                    center={[coords.lat, coords.lng]}
+                    radius={6}
+                    pathOptions={{
+                      color: selectedPath > 0 ? '#8B5CF6' : '#00aa55',
+                      fillColor: selectedPath > 0 ? '#8B5CF6' : '#00aa55',
+                      fillOpacity: 0.8,
+                      weight: 2
+                    }}
+                  />
+                );
+              })}
+            </MapContainer>
+          </div>
+        </div>
       </div>
+      
+      {/* Loading Overlay */}
+      {loading && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-fade-in">
+          <div className="bg-white rounded-none p-8 flex flex-col items-center gap-4  animate-slide-in">
+              <Loader2 size={36} className="animate-spin text-blue-500" />
+            <div className="text-center">
+              <p className="text-sm font-bold text-gray-800">Calculating Optimal Route</p>
+              <p className="text-xs text-gray-400 mt-0.5">Running Dijkstra's algorithm...</p>
+            </div>
+              <div className="w-32 h-1 bg-gray-200">
+                <div className="h-full bg-blue-600" style={{ width: '60%' }} />
+              </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
