@@ -108,6 +108,8 @@ Single-page React app, all state in `App.jsx` (~1150 lines). Three sub-component
 | `TrafficLayer` | Renders traffic density circles on the map |
 | `DijkstraVisualizer` | Step-by-step algorithm playback with play/pause/prev/next |
 | `MapClickHandler` | Captures map clicks to set nearest location |
+| `MapDetailModal` | Full-screen detailed route map view with start/end markers |
+| `GraphVisualizationModal` | **NEW** — Circular network graph with city labels and route highlighting |
 
 ### State Management (key variables)
 
@@ -158,6 +160,53 @@ Collapsible panel with:
 - **Traffic circles** — colored red/orange/green based on density %
 - **Markers** — square flat divIcons (no border-radius)
 
+### Graph Visualization Modal
+
+**New Feature**: Interactive circular network graph visualization with full city labels and route highlighting.
+
+**Layout**:
+- **Circular arrangement** — 30 nodes positioned evenly around a dynamic circle radius
+- **Fixed positions** — physics disabled for stable, instant rendering
+- **Full city names** — all location names fully displayed (no truncation)
+
+**Visual Design**:
+- **Node colors**:
+  - 🔵 Start point: Blue (#0066ff) with cyan glow
+  - 🔴 End point: Red (#ff3333) with red glow
+  - 🟢 Path nodes: Green (#00dd66) with bright glow
+  - ⚫ Other cities: Subtle gray (#6b7c8f)
+- **Edge styling**:
+  - Green (#00ff88) with glow for shortest path edges
+  - Gray (#6b7c8f) for other roads, lower opacity
+  - Weight labels displayed on each edge
+- **Background**: Gradient with blue/purple blur effects for visual appeal
+- **Shadow effects**: Enhanced shadows on path elements
+
+**Header**: 
+- White background with purple gradient icon
+- Title and subtitle in dark text
+- Close button with hover effects
+
+**Legend Panel**:
+- Bottom-left corner with backdrop blur
+- Organized sections for Nodes and Connections
+- Color-coded indicators matching graph elements
+- Fade-in animation on mount
+
+**Interactivity**:
+- **Hover tooltips** — full location name and edge details
+- **Drag to pan** — move around the graph
+- **Zoom controls** — navigation buttons in top-right
+- **Non-draggable nodes** — stable circular layout preserved
+- **Smooth transitions** — elegant animations on interactions
+
+**Technical Implementation**:
+- Uses vis-network library for rendering
+- Dynamic radius calculation: `radius = min(600, nodeCount * 80 / (2π))`
+- Position calculation using trigonometry: `angle = (index / nodeCount) * 2π`
+- Coordinates: `x = cos(angle) * radius`, `y = sin(angle) * radius`
+- Triggered by "View Graph" button after successful route calculation
+
 ### Data Flow
 
 ```
@@ -166,6 +215,7 @@ User selects locations → clicks "Find Shortest Path"
   → GET /api/alternatives → displays alternative routes in sidebar
   → OSRM API calls per edge → real road polyline on map
   → Generates algorithm steps → DijkstraVisualizer playback
+  → Graph data fetched → user clicks "View Graph" → GraphVisualizationModal renders circular layout
 ```
 
 ---
@@ -184,6 +234,9 @@ npm run preview    # serve dist/ locally
 ## Design Decisions
 
 - **Flat design** — square corners (`rounded-none`), solid flat colors (`bg-blue-600`), no shadows
+- **Circular graph layout** — evenly distributed nodes in a fixed circle for better visualization than physics-based layouts
+- **Full city labels** — all 30 location names displayed in full for clear identification
+- **Enhanced visual effects** — glow animations, gradient backgrounds, and shadow effects for attraction
 - **C++ backend** — educational choice to implement Dijkstra from scratch with no framework
 - **No JSON library** — manual string parsing in C++ to keep it self-contained (only standard library)
 - **100-continue support** — Windows HTTP stack (WinHTTP/PowerShell) requires this
@@ -204,11 +257,18 @@ dsa-sample/
 │   │   └── favicon.svg, icons.svg
 │   └── src/
 │       ├── main.jsx           # React entry
-│       ├── App.jsx            # everything
-│       ├── index.css          # Tailwind + custom styles
+│       ├── App.jsx            # everything (~1150 lines)
+│       ├── App.css            # Tailwind + custom graph styles
 │       └── assets/
 ├── server/
 │   ├── main.cpp               # HTTP server + Dijkstra + graph data
 │   └── crow_all.h             # (unused Crow header)
 └── info.md
 ```
+
+### Custom Styling (`App.css`)
+
+Added graph visualization enhancements:
+- **Glow animations** — `nodeGlow` and `edgeGlow` keyframe animations for path highlighting
+- **Fade-in animation** — `fadeInUp` for legend panel entry
+- **Tooltip styling** — dark themed vis-network tooltips with custom colors and transparency

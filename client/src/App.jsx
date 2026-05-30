@@ -362,38 +362,47 @@ const GraphVisualizationModal = ({ graphData, path, startLocation, endLocation, 
       return false;
     };
 
-    // Create nodes from graph data
+    // Create nodes from graph data with enhanced styling
     const nodes = new DataSet(
       Object.keys(graphData || {}).map((location) => {
         const isStart = path && path[0] === location;
         const isEnd = path && path[path.length - 1] === location;
         const isPathNode = path && path.includes(location);
         
+        const nodeSize = isStart || isEnd ? 45 : isPathNode ? 38 : 32;
+        
         return {
           id: location,
-          label: location.substring(0, 15),
+          label: location,
           title: location,
           color: {
-            background: isStart ? '#0066ff' : isEnd ? '#ff3333' : isPathNode ? '#00aa55' : '#5a6c7d',
-            border: isStart ? '#ffffff' : isEnd ? '#ffffff' : isPathNode ? '#ffffff' : '#3d4a59',
+            background: isStart ? '#0066ff' : isEnd ? '#ff3333' : isPathNode ? '#00dd66' : '#6b7c8f',
+            border: isStart ? '#00ccff' : isEnd ? '#ff6688' : isPathNode ? '#00ffaa' : '#4a5d75',
             highlight: {
               background: '#ff6600',
-              border: '#ffffff',
+              border: '#ffaa00',
             }
           },
           font: { 
-            size: isPathNode ? 14 : 12, 
+            size: isStart || isEnd ? 13 : isPathNode ? 12 : 11, 
             color: '#ffffff', 
             face: 'Arial, sans-serif',
-            bold: { size: 15, color: '#ffffff' }
+            bold: { 
+              size: isStart || isEnd ? 14 : isPathNode ? 13 : 12, 
+              color: '#ffffff',
+              face: 'Arial',
+            },
+            strokeWidth: 3,
+            strokeColor: '#0a0e27',
+            multi: false,
           },
-          borderWidth: isStart || isEnd ? 5 : isPathNode ? 4 : 2,
-          borderWidthSelected: 6,
-          size: isStart || isEnd ? 40 : isPathNode ? 35 : 28,
+          borderWidth: isStart || isEnd ? 3 : isPathNode ? 2.5 : 1.5,
+          borderWidthSelected: 4,
+          size: nodeSize,
           shadow: {
             enabled: true,
-            color: isPathNode ? 'rgba(0, 170, 85, 1)' : isStart ? 'rgba(0, 102, 255, 0.8)' : isEnd ? 'rgba(255, 51, 51, 0.8)' : 'rgba(0,0,0,0.4)',
-            size: isPathNode ? 20 : 10,
+            color: isPathNode ? 'rgba(0, 221, 102, 0.9)' : isStart ? 'rgba(0, 102, 255, 0.8)' : isEnd ? 'rgba(255, 51, 51, 0.8)' : 'rgba(100, 120, 140, 0.5)',
+            size: isPathNode ? 25 : isStart || isEnd ? 20 : 12,
             x: 0,
             y: 0,
           },
@@ -423,23 +432,28 @@ const GraphVisualizationModal = ({ graphData, path, startLocation, endLocation, 
               label: weight.toString(),
               title: `${from} ↔ ${to}: ${weight}`,
               color: isInPath ? {
-                color: '#00ff99',
-                highlight: '#00ff99',
-                hover: '#00ff99',
+                color: '#00ff88',
+                highlight: '#00ff88',
+                hover: '#00ffaa',
                 opacity: 1,
               } : {
-                color: '#a0b0c0',
-                highlight: '#ff6600',
-                hover: '#c0d0e0',
-                opacity: 1,
+                color: '#6b7c8f',
+                highlight: '#ff9900',
+                hover: '#8b9dae',
+                opacity: 0.7,
               },
-              width: isInPath ? 12 : 2,
+              width: isInPath ? 4 : 1.5,
               font: { 
-                size: isInPath ? 14 : 11, 
-                color: isInPath ? '#00ff99' : '#7a8a9a',
-                bold: { size: 15, color: isInPath ? '#00ff99' : '#7a8a9a' },
+                size: isInPath ? 13 : 10, 
+                color: isInPath ? '#00ff88' : '#7a8a9a',
+                face: 'Arial, sans-serif',
+                bold: { 
+                  size: isInPath ? 14 : 11, 
+                  color: isInPath ? '#00ff88' : '#7a8a9a',
+                  face: 'Arial',
+                },
                 strokeWidth: 3,
-                strokeColor: '#1a1a2a',
+                strokeColor: '#0a0e27',
               },
               smooth: {
                 type: 'continuous',
@@ -448,8 +462,8 @@ const GraphVisualizationModal = ({ graphData, path, startLocation, endLocation, 
               },
               shadow: {
                 enabled: isInPath,
-                color: 'rgba(0, 255, 153, 0.9)',
-                size: 25,
+                color: 'rgba(0, 255, 136, 0.95)',
+                size: 20,
                 x: 0,
                 y: 0,
               },
@@ -471,23 +485,28 @@ const GraphVisualizationModal = ({ graphData, path, startLocation, endLocation, 
               label: weight.toString(),
               title: `${from} ↔ ${to}: ${weight}`,
               color: isInPath ? {
-                color: '#00ff99',
-                highlight: '#00ff99',
-                hover: '#00ff99',
+                color: '#00ff88',
+                highlight: '#00ff88',
+                hover: '#00ffaa',
                 opacity: 1,
               } : {
-                color: '#a0b0c0',
-                highlight: '#ff6600',
-                hover: '#c0d0e0',
-                opacity: 1,
+                color: '#6b7c8f',
+                highlight: '#ff9900',
+                hover: '#8b9dae',
+                opacity: 0.7,
               },
-              width: isInPath ? 12 : 2,
+              width: isInPath ? 4 : 1.5,
               font: { 
-                size: isInPath ? 14 : 11, 
-                color: isInPath ? '#00ff99' : '#7a8a9a',
-                bold: { size: 15, color: isInPath ? '#00ff99' : '#7a8a9a' },
+                size: isInPath ? 13 : 10, 
+                color: isInPath ? '#00ff88' : '#7a8a9a',
+                face: 'Arial, sans-serif',
+                bold: { 
+                  size: isInPath ? 14 : 11, 
+                  color: isInPath ? '#00ff88' : '#7a8a9a',
+                  face: 'Arial',
+                },
                 strokeWidth: 3,
-                strokeColor: '#1a1a2a',
+                strokeColor: '#0a0e27',
               },
               smooth: {
                 type: 'continuous',
@@ -496,8 +515,8 @@ const GraphVisualizationModal = ({ graphData, path, startLocation, endLocation, 
               },
               shadow: {
                 enabled: isInPath,
-                color: 'rgba(0, 255, 153, 0.9)',
-                size: 25,
+                color: 'rgba(0, 255, 136, 0.95)',
+                size: 20,
                 x: 0,
                 y: 0,
               },
@@ -512,42 +531,57 @@ const GraphVisualizationModal = ({ graphData, path, startLocation, endLocation, 
 
     const edges = new DataSet(edgesArray);
 
+    // Calculate circular layout positions
+    const nodeCount = Object.keys(graphData || {}).length;
+    const radius = Math.min(600, (nodeCount * 80) / (2 * Math.PI));
+    const positions = {};
+    
+    Object.keys(graphData || {}).forEach((location, index) => {
+      const angle = (index / nodeCount) * 2 * Math.PI;
+      const x = Math.cos(angle) * radius;
+      const y = Math.sin(angle) * radius;
+      positions[location] = { x, y };
+    });
+    
+    // Update nodes with fixed positions
+    nodes.get({}).forEach(node => {
+      const pos = positions[node.id];
+      if (pos) {
+        nodes.update({
+          id: node.id,
+          x: pos.x,
+          y: pos.y,
+          physics: false,
+        });
+      }
+    });
+
     const options = {
       physics: {
-        enabled: true,
-        solver: 'repulsion',
-        repulsion: {
-          centralGravity: 0.1,
-          springLength: 400,
-          springConstant: 0.005,
-          nodeDistance: 400,
-          damping: 0.5,
-        },
-        maxVelocity: 50,
-        minVelocity: 0.05,
-        stabilization: {
-          iterations: 500,
-          fit: true,
-          updateInterval: 25,
-          onlyDynamicEdges: false,
-        },
-        timestep: 0.5,
-        adaptiveTimestep: true,
+        enabled: false,
       },
       nodes: {
         shape: 'dot',
         font: {
-          size: 13,
+          size: 14,
           color: '#ffffff',
           face: 'Arial, sans-serif',
-          strokeWidth: 2,
-          strokeColor: '#1a1a2a',
+          strokeWidth: 3,
+          strokeColor: '#0a0e27',
+          multi: false,
+          bold: {
+            size: 16,
+            color: '#ffffff',
+            face: 'Arial',
+            strokeWidth: 3,
+            strokeColor: '#0a0e27',
+          }
         },
         margin: {
-          top: 10,
-          bottom: 10,
-          left: 10,
-          right: 10,
+          top: 12,
+          bottom: 12,
+          left: 12,
+          right: 12,
         },
       },
       edges: {
@@ -563,31 +597,33 @@ const GraphVisualizationModal = ({ graphData, path, startLocation, endLocation, 
         },
         color: {
           inherit: false,
-          opacity: 1,
+          opacity: 0.8,
         },
         scaling: {
           min: 0.5,
           max: 20,
         },
-        hoverWidth: 3,
+        hoverWidth: 4,
         shadow: {
           enabled: true,
-          color: 'rgba(0, 0, 0, 0.3)',
-          size: 8,
-          x: 1,
-          y: 1,
+          color: 'rgba(0, 0, 0, 0.5)',
+          size: 10,
+          x: 2,
+          y: 2,
         },
       },
       interaction: {
         navigationButtons: true,
         keyboard: true,
-        dragNodes: true,
+        dragNodes: false,
         dragView: true,
         zoomView: true,
         hover: true,
-        tooltipDelay: 50,
+        tooltipDelay: 100,
         navigationButtonStyle: 'dark',
         zoomSpeed: 1,
+        multiselect: false,
+        selectable: true,
       },
     };
 
@@ -601,16 +637,15 @@ const GraphVisualizationModal = ({ graphData, path, startLocation, endLocation, 
     const network = new Network(graphRef.current, data, options);
     networkRef.current = network;
 
-    // Fit view after stabilization
-    network.once('stabilizationIterationsDone', function() {
-      network.setOptions({ physics: false });
+    // Fit view immediately since physics is disabled
+    setTimeout(() => {
       network.fit({ 
         animation: { 
-          duration: 500, 
+          duration: 800, 
           easingFunction: 'easeInOutQuad' 
         } 
       });
-    });
+    }, 100);
 
     return () => {
       if (networkRef.current) {
@@ -626,48 +661,62 @@ const GraphVisualizationModal = ({ graphData, path, startLocation, endLocation, 
 
   return (
     <div className="fixed inset-0 z-[9999] bg-black flex flex-col">
-      <div className="flex items-center justify-between bg-white px-4 py-2.5 shrink-0 border-b border-gray-200">
+      <div className="flex items-center justify-between bg-white px-4 py-3 shrink-0 border-b border-gray-200">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-purple-600 flex items-center justify-center">
-            <NetworkIcon size={14} className="text-white" />
+          <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-purple-700 flex items-center justify-center rounded-lg">
+            <NetworkIcon size={15} className="text-white" />
           </div>
-          <span className="text-sm font-bold text-gray-900">Graph Visualization</span>
-          <span className="text-xs text-gray-400 font-mono">Network Structure</span>
+          <div>
+            <span className="text-sm font-bold text-gray-900 block">City Network Graph</span>
+            <span className="text-xs text-gray-600 font-mono">Circular Layout with Route Highlighting</span>
+          </div>
         </div>
-        <button onClick={onClose} className="p-1.5 hover:bg-gray-100 transition-colors">
+        <button onClick={onClose} className="p-2 hover:bg-gray-100 transition-colors rounded-lg">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
-      <div className="flex-1 bg-gradient-to-br from-gray-900 to-black relative overflow-hidden">
-        <div ref={graphRef} className="w-full h-full" />
-        <div className="absolute bottom-4 left-4 bg-gray-900/90 backdrop-blur-sm text-white p-4 rounded-lg text-xs border border-gray-700 shadow-xl">
-          <div className="font-bold mb-3 text-sm">Network Legend:</div>
-          <div className="flex flex-col gap-2">
-            <div className="font-semibold text-gray-300 mb-1">Nodes:</div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-full bg-blue-500 border-2 border-white" style={{boxShadow: '0 0 8px rgba(0, 102, 255, 0.8)'}}></div>
-              <span>Start Point</span>
+      <div className="flex-1 bg-gradient-to-br from-gray-950 via-blue-950 to-gray-950 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-20">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl"></div>
+          <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl"></div>
+        </div>
+        <div ref={graphRef} className="w-full h-full relative z-10" />
+        <div className="absolute bottom-4 left-4 bg-gray-900/95 backdrop-blur-sm text-white p-4 rounded-lg text-xs border border-purple-500/30 shadow-2xl graph-legend">
+          <div className="font-bold mb-3 text-sm text-purple-300">Network Legend:</div>
+          <div className="flex flex-col gap-3">
+            <div>
+              <div className="font-semibold text-gray-300 mb-2">Nodes:</div>
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 rounded-full bg-blue-500 border-2 border-blue-300" style={{boxShadow: '0 0 12px rgba(0, 102, 255, 0.9)'}}></div>
+                  <span className="text-gray-200">Start Point</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 rounded-full bg-red-500 border-2 border-red-300" style={{boxShadow: '0 0 12px rgba(255, 51, 51, 0.9)'}}></div>
+                  <span className="text-gray-200">End Point</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 rounded-full bg-green-500 border-2 border-green-300" style={{boxShadow: '0 0 12px rgba(0, 221, 102, 0.9)'}}></div>
+                  <span className="text-gray-200">Path Nodes</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 rounded-full bg-gray-600 border-2 border-gray-500"></div>
+                  <span className="text-gray-400">Other Cities</span>
+                </div>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-full bg-red-500 border-2 border-white" style={{boxShadow: '0 0 8px rgba(255, 51, 51, 0.8)'}}></div>
-              <span>End Point</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-full bg-green-500 border-2 border-white" style={{boxShadow: '0 0 10px rgba(0, 170, 85, 1)'}}></div>
-              <span>Path Nodes</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-full bg-gray-500 border-2 border-gray-700"></div>
-              <span>Other Nodes</span>
-            </div>
-            <div className="font-semibold text-gray-300 mt-2 mb-1">Edges:</div>
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-1 rounded-full bg-green-400" style={{boxShadow: '0 0 8px rgba(0, 255, 153, 0.8)'}}></div>
-              <span>Path Route</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-0.5 rounded-full bg-gray-400"></div>
-              <span>Other Roads</span>
+            <div className="border-t border-gray-700 pt-2">
+              <div className="font-semibold text-gray-300 mb-2">Connections:</div>
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-1 rounded-full bg-green-400" style={{boxShadow: '0 0 8px rgba(0, 255, 136, 0.95)'}}></div>
+                  <span className="text-gray-200">Shortest Route</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-0.5 rounded-full bg-gray-500"></div>
+                  <span className="text-gray-400">Other Roads</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>

@@ -1,1 +1,56 @@
 @import "tailwindcss";
+
+/* Graph Visualization Styles */
+.vis-network {
+  font-family: 'Arial', sans-serif;
+}
+
+.vis-network canvas {
+  display: block;
+}
+
+/* Glow animation for path nodes */
+@keyframes nodeGlow {
+  0%, 100% {
+    filter: drop-shadow(0 0 8px rgba(0, 221, 102, 0.6));
+  }
+  50% {
+    filter: drop-shadow(0 0 20px rgba(0, 221, 102, 0.95));
+  }
+}
+
+@keyframes edgeGlow {
+  0%, 100% {
+    filter: drop-shadow(0 0 4px rgba(0, 255, 136, 0.7));
+  }
+  50% {
+    filter: drop-shadow(0 0 12px rgba(0, 255, 136, 0.95));
+  }
+}
+
+/* Custom legend styling */
+.graph-legend {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Smooth transitions for network elements */
+.vis-tooltip {
+  background-color: rgba(15, 23, 42, 0.95) !important;
+  border: 1px solid rgba(148, 163, 184, 0.3) !important;
+  border-radius: 8px !important;
+  color: #e2e8f0 !important;
+  font-size: 12px !important;
+  padding: 8px 12px !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8) !important;
+}
