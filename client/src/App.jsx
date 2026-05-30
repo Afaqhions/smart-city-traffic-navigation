@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents, CircleMarker } from 'react-leaflet';
 import L from 'leaflet';
-import { Navigation, ArrowRight, Activity, Trash2, Route, GitBranch, AlertTriangle, Search, Menu, X, Loader2 } from 'lucide-react';
+import { Network } from 'vis-network';
+import { DataSet } from 'vis-data';
+import { Navigation, ArrowRight, Activity, Trash2, Route, GitBranch, AlertTriangle, Search, Menu, X, Loader2, Network as NetworkIcon } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 
 // Fix Leaflet icon issue
@@ -136,8 +138,17 @@ const TrafficLayer = ({ trafficData, onTrafficClick }) => {
   );
 };
 
+const SPEED_OPTIONS = [
+  { label: '0.25x', value: 0.25, ms: 3200 },
+  { label: '0.5x', value: 0.5, ms: 1600 },
+  { label: '1x', value: 1, ms: 800 },
+  { label: '2x', value: 2, ms: 400 },
+  { label: '4x', value: 4, ms: 200 },
+];
+
 const DijkstraVisualizer = ({ steps, onStepChange, currentStep }) => {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [speed, setSpeed] = useState(SPEED_OPTIONS[2]);
   const intervalRef = useRef(null);
   const logEndRef = useRef(null);
   
@@ -149,14 +160,14 @@ const DijkstraVisualizer = ({ steps, onStepChange, currentStep }) => {
         } else {
           setIsPlaying(false);
         }
-      }, 800);
+      }, speed.ms);
     } else {
       if (intervalRef.current) clearInterval(intervalRef.current);
     }
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [isPlaying, currentStep, steps.length, onStepChange]);
+  }, [isPlaying, currentStep, steps.length, onStepChange, speed.ms]);
   
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -175,17 +186,17 @@ const DijkstraVisualizer = ({ steps, onStepChange, currentStep }) => {
           </div>
           <h4 className="text-white text-xs font-bold uppercase tracking-wider">Dijkstra Algorithm</h4>
         </div>
-        <div className="flex gap-1.5">
+        <div className="flex gap-1">
           <button
             onClick={() => onStepChange(Math.max(0, currentStep - 1))}
             disabled={currentStep <= 0}
-            className="px-2.5 py-1.5 bg-white/10 text-white text-xs rounded-none disabled:opacity-30 hover:bg-white/20 transition-all font-medium"
+            className="px-2 py-1.5 bg-white/10 text-white text-[11px] rounded-none disabled:opacity-30 hover:bg-white/20 transition-all font-medium leading-none"
           >
             Prev
           </button>
           <button
             onClick={() => setIsPlaying(!isPlaying)}
-            className="px-2.5 py-1.5 bg-blue-600 text-white text-xs rounded-none hover:opacity-90 transition-all font-medium  flex items-center gap-1"
+            className="px-2 py-1.5 bg-blue-600 text-white text-[11px] rounded-none hover:opacity-90 transition-all font-medium leading-none flex items-center gap-1"
           >
             {isPlaying ? (
               <><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Pause</>
@@ -196,7 +207,7 @@ const DijkstraVisualizer = ({ steps, onStepChange, currentStep }) => {
           <button
             onClick={() => onStepChange(Math.min(steps.length - 1, currentStep + 1))}
             disabled={currentStep >= steps.length - 1}
-            className="px-2.5 py-1.5 bg-white/10 text-white text-xs rounded-none disabled:opacity-30 hover:bg-white/20 transition-all font-medium"
+            className="px-2 py-1.5 bg-white/10 text-white text-[11px] rounded-none disabled:opacity-30 hover:bg-white/20 transition-all font-medium leading-none"
           >
             Next
           </button>
@@ -210,15 +221,34 @@ const DijkstraVisualizer = ({ steps, onStepChange, currentStep }) => {
         />
       </div>
       
-      <div className="bg-black/60 rounded-none p-3 font-mono text-xs max-h-44 overflow-y-auto border border-white/5">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[10px] text-gray-400 uppercase font-medium">Speed</span>
+        <div className="flex gap-1">
+          {SPEED_OPTIONS.map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => setSpeed(opt)}
+              className={`px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded-none transition-all ${
+                speed.value === opt.value
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white/10 text-gray-400 hover:bg-white/20'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      
+      <div className="bg-black/60 rounded-none p-3 font-mono text-xs max-h-44 overflow-y-auto overflow-x-hidden border border-white/5 break-words">
         {steps.slice(0, currentStep + 1).map((step, i) => {
           const isActive = i === currentStep;
           return (
             <div key={i} className={`mb-1 px-1.5 py-0.5 rounded-none transition-colors ${isActive ? 'bg-blue-500/20' : ''}`}>
-              <span className="text-gray-500 mr-2 select-none">{String(i + 1).padStart(2, '0')}.</span>
-              <span className={isActive ? 'text-blue-300' : 'text-green-400'}>{step.action}</span>
+              <span className="text-gray-500 mr-2 select-none shrink-0">{String(i + 1).padStart(2, '0')}.</span>
+              <span className={isActive ? 'text-blue-300 break-words' : 'text-green-400 break-words'}>{step.action}</span>
               {step.distance !== undefined && step.distance !== Infinity && (
-                <span className="text-yellow-400/80 ml-2">(dist: {step.distance})</span>
+                <span className="text-yellow-400/80 ml-2 shrink-0">(dist: {step.distance})</span>
               )}
             </div>
           );
@@ -241,6 +271,405 @@ const DijkstraVisualizer = ({ steps, onStepChange, currentStep }) => {
         <div className="bg-white/5 rounded-none p-2 text-center">
           <span className="text-[10px] text-gray-400 uppercase block font-medium">Steps</span>
           <span className="text-white text-sm font-bold font-mono">{currentStep + 1}/{steps.length}</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Map Detail Modal Component
+const MapDetailModal = ({ startCoords, endCoords, routePositions, path, onClose }) => {
+  const mapRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+
+  useEffect(() => {
+    if (!mapRef.current || mapInstanceRef.current) return;
+
+    const map = L.map(mapRef.current, {
+      center: lahoreCenter,
+      zoom: 12,
+      zoomControl: true,
+      scrollWheelZoom: true,
+    });
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+
+    if (startCoords) {
+      L.marker(startCoords, { icon: createCustomIcon('start') }).addTo(map);
+    }
+    if (endCoords) {
+      L.marker(endCoords, { icon: createCustomIcon('end') }).addTo(map);
+    }
+    if (routePositions.length > 0) {
+      L.polyline(routePositions, {
+        color: '#0066ff',
+        weight: 6,
+        opacity: 0.9,
+        lineCap: 'round',
+        lineJoin: 'round'
+      }).addTo(map);
+    }
+    if (routePositions.length > 0) {
+      map.fitBounds(L.latLngBounds(routePositions).pad(0.1));
+    }
+
+    mapInstanceRef.current = map;
+    map.invalidateSize();
+
+    return () => {
+      map.remove();
+      mapInstanceRef.current = null;
+    };
+  }, []);
+
+  return (
+    <div className="fixed inset-0 z-[9999] bg-black flex flex-col">
+      <div className="flex items-center justify-between bg-white px-4 py-2.5 shrink-0 border-b border-gray-200">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 bg-blue-600 flex items-center justify-center">
+            <Navigation size={14} className="text-white" />
+          </div>
+          <span className="text-sm font-bold text-gray-900">Detailed Route View</span>
+          <span className="text-xs text-gray-400 font-mono">{path.length} stops</span>
+        </div>
+        <button onClick={onClose} className="p-1.5 hover:bg-gray-100 transition-colors">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div ref={mapRef} className="flex-1 w-full" />
+    </div>
+  );
+};
+
+// Graph Visualization Modal Component
+const GraphVisualizationModal = ({ graphData, path, startLocation, endLocation, onClose }) => {
+  const graphRef = useRef(null);
+  const networkRef = useRef(null);
+
+  useEffect(() => {
+    if (!graphRef.current || !graphData) return;
+
+    // Helper function to check if edge is in path
+    const isEdgeInPath = (from, to) => {
+      if (!path || path.length < 2) return false;
+      for (let i = 0; i < path.length - 1; i++) {
+        if ((path[i] === from && path[i + 1] === to) || (path[i] === to && path[i + 1] === from)) {
+          return true;
+        }
+      }
+      return false;
+    };
+
+    // Create nodes from graph data
+    const nodes = new DataSet(
+      Object.keys(graphData || {}).map((location) => {
+        const isStart = path && path[0] === location;
+        const isEnd = path && path[path.length - 1] === location;
+        const isPathNode = path && path.includes(location);
+        
+        return {
+          id: location,
+          label: location.substring(0, 15),
+          title: location,
+          color: {
+            background: isStart ? '#0066ff' : isEnd ? '#ff3333' : isPathNode ? '#00aa55' : '#5a6c7d',
+            border: isStart ? '#ffffff' : isEnd ? '#ffffff' : isPathNode ? '#ffffff' : '#3d4a59',
+            highlight: {
+              background: '#ff6600',
+              border: '#ffffff',
+            }
+          },
+          font: { 
+            size: isPathNode ? 14 : 12, 
+            color: '#ffffff', 
+            face: 'Arial, sans-serif',
+            bold: { size: 15, color: '#ffffff' }
+          },
+          borderWidth: isStart || isEnd ? 5 : isPathNode ? 4 : 2,
+          borderWidthSelected: 6,
+          size: isStart || isEnd ? 40 : isPathNode ? 35 : 28,
+          shadow: {
+            enabled: true,
+            color: isPathNode ? 'rgba(0, 170, 85, 1)' : isStart ? 'rgba(0, 102, 255, 0.8)' : isEnd ? 'rgba(255, 51, 51, 0.8)' : 'rgba(0,0,0,0.4)',
+            size: isPathNode ? 20 : 10,
+            x: 0,
+            y: 0,
+          },
+        };
+      })
+    );
+
+    // Create edges from graph data - handle array format
+    const edgesArray = [];
+    const edgeSet = new Set();
+    
+    Object.entries(graphData || {}).forEach(([from, edgesList]) => {
+      // Handle if edges are in array format (with to, weight, etc.)
+      if (Array.isArray(edgesList)) {
+        edgesList.forEach(edge => {
+          const to = edge.to || edge;
+          const weight = edge.weight || 1;
+          const edgeKey = [from, to].sort().join('|');
+          
+          if (!edgeSet.has(edgeKey)) {
+            edgeSet.add(edgeKey);
+            const isInPath = isEdgeInPath(from, to);
+            
+            edgesArray.push({
+              from,
+              to,
+              label: weight.toString(),
+              title: `${from} ↔ ${to}: ${weight}`,
+              color: isInPath ? {
+                color: '#00ff99',
+                highlight: '#00ff99',
+                hover: '#00ff99',
+                opacity: 1,
+              } : {
+                color: '#a0b0c0',
+                highlight: '#ff6600',
+                hover: '#c0d0e0',
+                opacity: 1,
+              },
+              width: isInPath ? 12 : 2,
+              font: { 
+                size: isInPath ? 14 : 11, 
+                color: isInPath ? '#00ff99' : '#7a8a9a',
+                bold: { size: 15, color: isInPath ? '#00ff99' : '#7a8a9a' },
+                strokeWidth: 3,
+                strokeColor: '#1a1a2a',
+              },
+              smooth: {
+                type: 'continuous',
+                forceDirection: false,
+                roundness: 0.5,
+              },
+              shadow: {
+                enabled: isInPath,
+                color: 'rgba(0, 255, 153, 0.9)',
+                size: 25,
+                x: 0,
+                y: 0,
+              },
+            });
+          }
+        });
+      } else if (typeof edgesList === 'object') {
+        // Handle if edges are in object format
+        Object.entries(edgesList).forEach(([to, weight]) => {
+          const edgeKey = [from, to].sort().join('|');
+          
+          if (!edgeSet.has(edgeKey)) {
+            edgeSet.add(edgeKey);
+            const isInPath = isEdgeInPath(from, to);
+            
+            edgesArray.push({
+              from,
+              to,
+              label: weight.toString(),
+              title: `${from} ↔ ${to}: ${weight}`,
+              color: isInPath ? {
+                color: '#00ff99',
+                highlight: '#00ff99',
+                hover: '#00ff99',
+                opacity: 1,
+              } : {
+                color: '#a0b0c0',
+                highlight: '#ff6600',
+                hover: '#c0d0e0',
+                opacity: 1,
+              },
+              width: isInPath ? 12 : 2,
+              font: { 
+                size: isInPath ? 14 : 11, 
+                color: isInPath ? '#00ff99' : '#7a8a9a',
+                bold: { size: 15, color: isInPath ? '#00ff99' : '#7a8a9a' },
+                strokeWidth: 3,
+                strokeColor: '#1a1a2a',
+              },
+              smooth: {
+                type: 'continuous',
+                forceDirection: false,
+                roundness: 0.5,
+              },
+              shadow: {
+                enabled: isInPath,
+                color: 'rgba(0, 255, 153, 0.9)',
+                size: 25,
+                x: 0,
+                y: 0,
+              },
+            });
+          }
+        });
+      }
+    });
+
+    console.log('Nodes:', nodes.get({}));
+    console.log('Edges:', edgesArray);
+
+    const edges = new DataSet(edgesArray);
+
+    const options = {
+      physics: {
+        enabled: true,
+        solver: 'repulsion',
+        repulsion: {
+          centralGravity: 0.1,
+          springLength: 400,
+          springConstant: 0.005,
+          nodeDistance: 400,
+          damping: 0.5,
+        },
+        maxVelocity: 50,
+        minVelocity: 0.05,
+        stabilization: {
+          iterations: 500,
+          fit: true,
+          updateInterval: 25,
+          onlyDynamicEdges: false,
+        },
+        timestep: 0.5,
+        adaptiveTimestep: true,
+      },
+      nodes: {
+        shape: 'dot',
+        font: {
+          size: 13,
+          color: '#ffffff',
+          face: 'Arial, sans-serif',
+          strokeWidth: 2,
+          strokeColor: '#1a1a2a',
+        },
+        margin: {
+          top: 10,
+          bottom: 10,
+          left: 10,
+          right: 10,
+        },
+      },
+      edges: {
+        smooth: {
+          type: 'continuous',
+          forceDirection: false,
+          roundness: 0.5,
+        },
+        arrows: {
+          to: false,
+          from: false,
+          middle: false,
+        },
+        color: {
+          inherit: false,
+          opacity: 1,
+        },
+        scaling: {
+          min: 0.5,
+          max: 20,
+        },
+        hoverWidth: 3,
+        shadow: {
+          enabled: true,
+          color: 'rgba(0, 0, 0, 0.3)',
+          size: 8,
+          x: 1,
+          y: 1,
+        },
+      },
+      interaction: {
+        navigationButtons: true,
+        keyboard: true,
+        dragNodes: true,
+        dragView: true,
+        zoomView: true,
+        hover: true,
+        tooltipDelay: 50,
+        navigationButtonStyle: 'dark',
+        zoomSpeed: 1,
+      },
+    };
+
+    const data = { nodes, edges };
+    
+    // Clear and reinit
+    if (graphRef.current) {
+      graphRef.current.innerHTML = '';
+    }
+    
+    const network = new Network(graphRef.current, data, options);
+    networkRef.current = network;
+
+    // Fit view after stabilization
+    network.once('stabilizationIterationsDone', function() {
+      network.setOptions({ physics: false });
+      network.fit({ 
+        animation: { 
+          duration: 500, 
+          easingFunction: 'easeInOutQuad' 
+        } 
+      });
+    });
+
+    return () => {
+      if (networkRef.current) {
+        try {
+          networkRef.current.destroy();
+        } catch (e) {
+          console.error('Error destroying network:', e);
+        }
+      }
+      networkRef.current = null;
+    };
+  }, [graphData, path]);
+
+  return (
+    <div className="fixed inset-0 z-[9999] bg-black flex flex-col">
+      <div className="flex items-center justify-between bg-white px-4 py-2.5 shrink-0 border-b border-gray-200">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 bg-purple-600 flex items-center justify-center">
+            <NetworkIcon size={14} className="text-white" />
+          </div>
+          <span className="text-sm font-bold text-gray-900">Graph Visualization</span>
+          <span className="text-xs text-gray-400 font-mono">Network Structure</span>
+        </div>
+        <button onClick={onClose} className="p-1.5 hover:bg-gray-100 transition-colors">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div className="flex-1 bg-gradient-to-br from-gray-900 to-black relative overflow-hidden">
+        <div ref={graphRef} className="w-full h-full" />
+        <div className="absolute bottom-4 left-4 bg-gray-900/90 backdrop-blur-sm text-white p-4 rounded-lg text-xs border border-gray-700 shadow-xl">
+          <div className="font-bold mb-3 text-sm">Network Legend:</div>
+          <div className="flex flex-col gap-2">
+            <div className="font-semibold text-gray-300 mb-1">Nodes:</div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded-full bg-blue-500 border-2 border-white" style={{boxShadow: '0 0 8px rgba(0, 102, 255, 0.8)'}}></div>
+              <span>Start Point</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded-full bg-red-500 border-2 border-white" style={{boxShadow: '0 0 8px rgba(255, 51, 51, 0.8)'}}></div>
+              <span>End Point</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded-full bg-green-500 border-2 border-white" style={{boxShadow: '0 0 10px rgba(0, 170, 85, 1)'}}></div>
+              <span>Path Nodes</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded-full bg-gray-500 border-2 border-gray-700"></div>
+              <span>Other Nodes</span>
+            </div>
+            <div className="font-semibold text-gray-300 mt-2 mb-1">Edges:</div>
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-1 rounded-full bg-green-400" style={{boxShadow: '0 0 8px rgba(0, 255, 153, 0.8)'}}></div>
+              <span>Path Route</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-0.5 rounded-full bg-gray-400"></div>
+              <span>Other Roads</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -286,6 +715,9 @@ function App() {
   const [trafficRoad, setTrafficRoad] = useState('');
   const [trafficDensity, setTrafficDensity] = useState(50);
   const [updatingTraffic, setUpdatingTraffic] = useState(false);
+  const [showDetailedGraph, setShowDetailedGraph] = useState(false);
+  const [showPathOnMap, setShowPathOnMap] = useState(false);
+  const [showGraphView, setShowGraphView] = useState(false);
   
   // Show toast helper
   const showStatusToast = useCallback((message, type = 'info', duration = 3000) => {
@@ -418,6 +850,7 @@ function App() {
     setLoading(true);
     setRoadDistance(null);
     setAlternativePaths([]);
+    setShowPathOnMap(false);
     
     const start = startLocation || findNearestLocation(startCoords[0], startCoords[1]);
     const end = endLocation || findNearestLocation(endCoords[0], endCoords[1]);
@@ -460,7 +893,7 @@ function App() {
         
         steps.push({ action: `Goal reached! Shortest path found with total distance ${data.distance}`, distance: data.distance });
         setAlgoSteps(steps);
-        setCurrentStep(steps.length - 1);
+        setCurrentStep(-1);
         
         // Get real road distance using OSRM
         const positions = data.path.map(loc => {
@@ -532,6 +965,8 @@ function App() {
     setSelectedPath(0);
     setEstimatedTime(null);
     setRoadDistance(null);
+    setShowPathOnMap(false);
+    setShowDetailedGraph(false);
     showStatusToast('All selections cleared', 'info', 2000);
   };
   
@@ -544,6 +979,7 @@ function App() {
     setPath([]);
     setDistance(null);
     setRoutePositions([]);
+    setShowPathOnMap(false);
     showStatusToast('Start and destination swapped', 'info', 2000);
   };
   
@@ -660,10 +1096,10 @@ function App() {
       {/* Main content area */}
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
-        <div className={`bg-white/95 border-r border-gray-200/50 transition-all duration-300 ease-out shrink-0 overflow-hidden ${
+        <div className={`bg-white/95 border-r border-gray-200/50 transition-all duration-300 ease-out shrink-0 overflow-hidden flex flex-col ${
           sidebarOpen ? 'w-80' : 'w-0'
         }`}>
-          <div className="p-4 h-full overflow-y-auto">
+          <div className="p-4 flex-1 overflow-y-auto overflow-x-hidden">
             {/* Sidebar Header */}
             <div className="flex justify-between items-center mb-5 pb-4 border-b border-gray-200/50">
               <div className="flex items-center gap-2.5">
@@ -865,114 +1301,6 @@ function App() {
               </button>
             </div>
             
-            {/* Results Panel */}
-            {distance !== null && distance !== -1 && (
-              <div className="mt-5 animate-slide-in">
-                <div className="bg-white rounded-none p-4 border border-gray-100 ">
-                  <h3 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-3">Trip Summary</h3>
-                  <div className="grid grid-cols-2 gap-2.5 mb-3">
-                    <div className="bg-blue-600 rounded-none p-3 text-center  ">
-                      <span className="text-[9px] font-bold uppercase tracking-wider opacity-75 block">Distance</span>
-                      <p className="text-xl font-black tracking-tight">{distance.toFixed(1)} <span className="text-sm font-medium opacity-75">km</span></p>
-                    </div>
-                    <div className="bg-emerald-600 rounded-none p-3 text-center  ">
-                      <span className="text-[9px] font-bold uppercase tracking-wider opacity-75 block">Stops</span>
-                      <p className="text-xl font-black tracking-tight">{path.length} <span className="text-sm font-medium opacity-75">nodes</span></p>
-                    </div>
-                  </div>
-                  
-                  {roadDistance && (
-                    <div className="flex items-center justify-between bg-blue-50 rounded-none px-3 py-2.5 mb-3 border border-blue-100">
-                      <span className="text-xs font-medium text-blue-700">Road Distance</span>
-                      <span className="text-sm font-bold text-blue-700 font-mono">{roadDistance} km</span>
-                    </div>
-                  )}
-                  
-                  {estimatedTime && (
-                    <div className="bg-purple-600 rounded-none p-3 text-center mb-3  ">
-                      <span className="text-[9px] font-bold uppercase tracking-wider opacity-75 block">Estimated Time</span>
-                      <p className="text-xl font-black tracking-tight">{estimatedTime} <span className="text-sm font-medium opacity-75">min</span></p>
-                    </div>
-                  )}
-                  
-                  {/* Path Sequence */}
-                  <div>
-                    <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-2">Path Sequence</span>
-                    <div className="space-y-1 max-h-44 overflow-y-auto custom-scrollbar pr-1">
-                      {path.map((step, i) => (
-                        <div key={i} className="flex items-center gap-2.5 bg-white p-2.5 rounded-none border border-gray-100 hover:border-gray-200 transition-all hover:">
-                          <div className={`w-6 h-6 flex items-center justify-center text-[10px] font-bold rounded-none shrink-0 ${
-                            i === 0 ? 'bg-blue-600 text-white  ' : 
-                            i === path.length - 1 ? 'bg-red-500 text-white  ' : 
-                            'bg-gray-200 text-gray-600'
-                          }`}>
-                            {i + 1}
-                          </div>
-                          <span className="text-xs font-medium text-gray-800 leading-tight">{step}</span>
-                          {i < path.length - 1 && (
-                            <svg className="ml-auto shrink-0 text-gray-300" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            {/* Algorithm Visualization */}
-            {algoSteps.length > 0 && (
-              <DijkstraVisualizer 
-                steps={algoSteps}
-                currentStep={currentStep}
-                onStepChange={setCurrentStep}
-              />
-            )}
-            
-            {/* Alternative Paths */}
-            {alternativePaths.length > 1 && (
-              <div className="mt-4 animate-slide-in">
-                <div className="bg-white rounded-none p-4 border border-gray-100 ">
-                  <h3 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                    <GitBranch size={12} /> Alternative Routes
-                  </h3>
-                  <div className="space-y-2">
-                    {alternativePaths.slice(1).map((alt, idx) => (
-                      <div 
-                        key={idx}
-                        className={`p-3 rounded-none cursor-pointer transition-all ${
-                          selectedPath === idx + 1
-                            ? 'border-2 border-purple-500 bg-purple-50/50 '
-                            : 'border border-gray-200 bg-white hover:border-gray-300 hover:'
-                        }`}
-                        onClick={() => {
-                          setSelectedPath(idx + 1);
-                          setPath(alt.path);
-                          setDistance(alt.distance);
-                          setEstimatedTime(alt.distance * 2);
-                        }}
-                      >
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="text-xs font-bold flex items-center gap-1.5">
-                            <div className={`w-4 h-4 rounded-none flex items-center justify-center text-[9px] font-bold ${
-                              selectedPath === idx + 1 ? 'bg-purple-500 text-white' : 'bg-gray-200 text-gray-500'
-                            }`}>
-                              {idx + 2}
-                            </div>
-                            Route {idx + 2}
-                          </span>
-                          <span className="text-xs font-mono font-bold text-gray-600">{alt.distance.toFixed(1)} km</span>
-                        </div>
-                        <div className="text-[11px] text-gray-400 truncate">
-                          {alt.path.slice(0, 3).join(' → ')}...
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-            
             {/* Info Panel */}
             <div className="mt-4 bg-gray-900 rounded-none p-4  animate-fade-in">
               <h3 className="text-[11px] font-bold text-white/80 uppercase tracking-wider mb-3 flex items-center gap-2">
@@ -1003,6 +1331,140 @@ function App() {
             </div>
           </div>
         </div>
+        
+        {/* Results Panel */}
+        {distance !== null && distance !== -1 && (
+          <div className="w-96 border-r border-gray-200/50 bg-gray-50 flex flex-col shrink-0">
+            <div className="p-4 flex-1 overflow-y-auto overflow-x-hidden">
+              {/* Trip Summary */}
+              <div className="animate-slide-in">
+                <div className="bg-white rounded-none p-4 border border-gray-100">
+                  <h3 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-3">Trip Summary</h3>
+                  <div className="grid grid-cols-2 gap-2.5 mb-3">
+                    <div className="bg-blue-600 rounded-none p-3 text-center">
+                      <span className="text-[9px] font-bold uppercase tracking-wider opacity-75 block">Distance</span>
+                      <p className="text-xl font-black tracking-tight">{distance.toFixed(1)} <span className="text-sm font-medium opacity-75">km</span></p>
+                    </div>
+                    <div className="bg-emerald-600 rounded-none p-3 text-center">
+                      <span className="text-[9px] font-bold uppercase tracking-wider opacity-75 block">Stops</span>
+                      <p className="text-xl font-black tracking-tight">{path.length} <span className="text-sm font-medium opacity-75">nodes</span></p>
+                    </div>
+                  </div>
+                  
+                  {roadDistance && (
+                    <div className="flex items-center justify-between bg-blue-50 rounded-none px-3 py-2.5 mb-3 border border-blue-100">
+                      <span className="text-xs font-medium text-blue-700">Road Distance</span>
+                      <span className="text-sm font-bold text-blue-700 font-mono">{roadDistance} km</span>
+                    </div>
+                  )}
+                  
+                  {estimatedTime && (
+                    <div className="bg-purple-600 rounded-none p-3 text-center mb-3">
+                      <span className="text-[9px] font-bold uppercase tracking-wider opacity-75 block">Estimated Time</span>
+                      <p className="text-xl font-black tracking-tight">{estimatedTime} <span className="text-sm font-medium opacity-75">min</span></p>
+                    </div>
+                  )}
+                  
+                  
+                  {/* Path Sequence */}
+                  <div>
+                    <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-2">Path Sequence</span>
+                    <div className="space-y-1 max-h-44 overflow-y-auto overflow-x-hidden custom-scrollbar pr-1">
+                      {path.map((step, i) => (
+                        <div key={i} className="flex items-center gap-2.5 bg-white p-2.5 rounded-none border border-gray-100 hover:border-gray-200 transition-all">
+                          <div className={`w-6 h-6 flex items-center justify-center text-[10px] font-bold rounded-none shrink-0 ${
+                            i === 0 ? 'bg-blue-600 text-white' : 
+                            i === path.length - 1 ? 'bg-red-500 text-white' : 
+                            'bg-gray-200 text-gray-600'
+                          }`}>
+                            {i + 1}
+                          </div>
+                          <span className="text-xs font-medium text-gray-800 leading-tight truncate min-w-0">{step}</span>
+                          {i < path.length - 1 && (
+                            <svg className="ml-auto shrink-0 text-gray-300" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Detailed View & Graph View Buttons */}
+              <div className="grid grid-cols-2 gap-2 mt-4">
+                <button
+                  onClick={() => setShowDetailedGraph(true)}
+                  className="py-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold uppercase tracking-wider rounded-none flex items-center justify-center gap-2 transition-all"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  Map View
+                </button>
+                
+                <button
+                  onClick={() => setShowGraphView(true)}
+                  disabled={!graphData}
+                  className="py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white text-xs font-bold uppercase tracking-wider rounded-none flex items-center justify-center gap-2 transition-all"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/><path d="M12 13v4M19 11v4M5 11v4"/></svg>
+                  Graph View
+                </button>
+              </div>
+              
+              {/* Algorithm Visualization */}
+              {algoSteps.length > 0 && (
+                <DijkstraVisualizer 
+                  steps={algoSteps}
+                  currentStep={currentStep}
+                  onStepChange={setCurrentStep}
+                />
+              )}
+              
+              {/* Alternative Paths */}
+              {alternativePaths.length > 1 && (
+                <div className="mt-4 animate-slide-in">
+                  <div className="bg-white rounded-none p-4 border border-gray-100">
+                    <h3 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                      <GitBranch size={12} /> Alternative Routes
+                    </h3>
+                    <div className="space-y-2">
+                      {alternativePaths.slice(1).map((alt, idx) => (
+                        <div 
+                          key={idx}
+                          className={`p-3 rounded-none cursor-pointer transition-all ${
+                            selectedPath === idx + 1
+                              ? 'border-2 border-purple-500 bg-purple-50/50'
+                              : 'border border-gray-200 bg-white hover:border-gray-300'
+                          }`}
+                          onClick={() => {
+                            setSelectedPath(idx + 1);
+                            setPath(alt.path);
+                            setDistance(alt.distance);
+                            setEstimatedTime(alt.distance * 2);
+                          }}
+                        >
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-xs font-bold flex items-center gap-1.5">
+                              <div className={`w-4 h-4 rounded-none flex items-center justify-center text-[9px] font-bold ${
+                                selectedPath === idx + 1 ? 'bg-purple-500 text-white' : 'bg-gray-200 text-gray-500'
+                              }`}>
+                                {idx + 2}
+                              </div>
+                              Route {idx + 2}
+                            </span>
+                            <span className="text-xs font-mono font-bold text-gray-600">{alt.distance.toFixed(1)} km</span>
+                          </div>
+                          <div className="text-[11px] text-gray-400 truncate">
+                            {alt.path.slice(0, 3).join(' → ')}...
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
         
         {/* Main Map Area */}
         <div className="flex-1 relative">
@@ -1098,9 +1560,9 @@ function App() {
                 <Polyline 
                   positions={routePositions}
                   pathOptions={{
-                    color: selectedPath > 0 ? '#8B5CF6' : '#00aa55',
-                    weight: 5,
-                    opacity: 0.85,
+                    color: selectedPath > 0 ? '#8B5CF6' : '#0066ff',
+                    weight: 6,
+                    opacity: 0.9,
                     lineCap: 'round',
                     lineJoin: 'round'
                   }}
@@ -1116,11 +1578,11 @@ function App() {
                   <CircleMarker
                     key={idx}
                     center={[coords.lat, coords.lng]}
-                    radius={6}
+                    radius={5}
                     pathOptions={{
-                      color: selectedPath > 0 ? '#8B5CF6' : '#00aa55',
-                      fillColor: selectedPath > 0 ? '#8B5CF6' : '#00aa55',
-                      fillOpacity: 0.8,
+                      color: '#0066ff',
+                      fillColor: '#0066ff',
+                      fillOpacity: 0.6,
                       weight: 2
                     }}
                   />
@@ -1133,18 +1595,40 @@ function App() {
       
       {/* Loading Overlay */}
       {loading && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-fade-in">
-          <div className="bg-white rounded-none p-8 flex flex-col items-center gap-4  animate-slide-in">
-              <Loader2 size={36} className="animate-spin text-blue-500" />
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[9998] animate-fade-in" style={{ pointerEvents: 'auto' }}>
+          <div className="bg-white rounded-none p-8 flex flex-col items-center gap-4 animate-slide-in shadow-xl">
+            <Loader2 size={40} className="animate-spin text-blue-600" />
             <div className="text-center">
-              <p className="text-sm font-bold text-gray-800">Calculating Optimal Route</p>
-              <p className="text-xs text-gray-400 mt-0.5">Running Dijkstra's algorithm...</p>
+              <p className="text-sm font-bold text-gray-900">Calculating Optimal Route</p>
+              <p className="text-xs text-gray-500 mt-0.5">Running Dijkstra's algorithm...</p>
             </div>
-              <div className="w-32 h-1 bg-gray-200">
-                <div className="h-full bg-blue-600" style={{ width: '60%' }} />
-              </div>
+            <div className="w-40 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+              <div className="h-full bg-blue-600 rounded-full" style={{ width: '60%', animation: 'pulse 1s infinite' }} />
+            </div>
           </div>
         </div>
+      )}
+      
+      {/* Detailed Map Modal */}
+      {showDetailedGraph && (
+        <MapDetailModal
+          startCoords={startCoords}
+          endCoords={endCoords}
+          routePositions={routePositions}
+          path={path}
+          onClose={() => setShowDetailedGraph(false)}
+        />
+      )}
+      
+      {/* Graph Visualization Modal */}
+      {showGraphView && graphData && (
+        <GraphVisualizationModal
+          graphData={graphData}
+          path={path}
+          startLocation={startLocation}
+          endLocation={endLocation}
+          onClose={() => setShowGraphView(false)}
+        />
       )}
     </div>
   );
