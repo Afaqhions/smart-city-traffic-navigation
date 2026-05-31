@@ -729,8 +729,7 @@ void run_server() {
                 string end = extract_json_value(body, "end");
                 string k_str = extract_json_value(body, "k");
                 int k = (k_str.empty() || k_str == "null") ? 3 : stoi(k_str);
-                
-                cout << "[INFO] POST /api/alternatives - From: " << start << " To: " << end << " (k=" << k << ")" << endl;
+                                cout << "[INFO] POST /api/alternatives - From: " << start << " To: " << end << " (k=" << k << ")" << endl;
                 
                 auto paths = find_alternative_paths(start, end, k);
                 
